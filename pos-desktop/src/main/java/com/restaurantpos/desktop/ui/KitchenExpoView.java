@@ -59,8 +59,10 @@ public final class KitchenExpoView extends VBox {
         HBox top = new HBox(12, heading, refreshBtn);
         top.setAlignment(Pos.CENTER_LEFT);
 
+        ordersFlow.setPadding(new Insets(2, 4, 12, 2));
         ScrollPane scroll = new ScrollPane(ordersFlow);
         scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("pos-scroll-pane");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         getChildren().addAll(top, banner, scroll);

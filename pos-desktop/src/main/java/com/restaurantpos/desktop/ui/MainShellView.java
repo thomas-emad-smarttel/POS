@@ -108,8 +108,17 @@ public final class MainShellView extends BorderPane {
     private void refreshUserBadge() {
         UserProfileDto profile = sessionContext.profile();
         if (profile != null) {
-            userBadge.setText(profile.fullName() + " | Branch: " + profile.activeBranchId());
+            String roleSummary = (profile.assignedRoles() != null && !profile.assignedRoles().isEmpty())
+                    ? String.join(", ", profile.assignedRoles())
+                    : profile.username();
+            userBadge.setText(profile.fullName() + " • " + roleSummary);
             userBadge.setTone(StatusBadge.Tone.SUCCESS);
+            if (profile.activeBranchId() != null) {
+                userBadge.setTooltip(new javafx.scene.control.Tooltip(
+                        "Branch ID: " + profile.activeBranchId()
+                                + (profile.terminalId() != null ? "\nTerminal ID: " + profile.terminalId() : "")
+                ));
+            }
         }
     }
 

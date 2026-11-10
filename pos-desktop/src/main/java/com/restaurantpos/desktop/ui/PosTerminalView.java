@@ -73,13 +73,13 @@ public final class PosTerminalView extends BorderPane {
     private final NotificationBanner banner = new NotificationBanner();
     private final StatusBadge modeBadge = new StatusBadge("ONLINE", StatusBadge.Tone.SUCCESS);
     private final VBox categoryRail = new VBox(8);
-    private final FlowPane productGrid = new FlowPane(12, 12);
+    private final FlowPane productGrid = new FlowPane(14, 14);
     private final SearchField searchField = new SearchField("Search menu or scan barcode [F2]...");
     private final ViewStateContainer gridStateContainer;
 
     private final ComboBox<String> orderTypeCombo = new ComboBox<>();
     private final Label orderHeaderLabel = new Label("No Active Order");
-    private final StatusBadge orderStatusBadge = new StatusBadge("NEW", StatusBadge.Tone.NEUTRAL);
+    private final StatusBadge orderStatusBadge = new StatusBadge("IDLE", StatusBadge.Tone.NEUTRAL);
     private final VBox cartItemsBox = new VBox(8);
     private final Label subtotalLabel = new Label("Subtotal: $0.00");
     private final Label discountLabel = new Label("Discount: $0.00");
@@ -87,7 +87,7 @@ public final class PosTerminalView extends BorderPane {
     private final Label grandTotalLabel = new Label("Total: $0.00");
 
     private final PrimaryButton sendKitchenBtn = new PrimaryButton("Send to Kitchen [F9]");
-    private final PrimaryButton checkoutBtn = new PrimaryButton("Checkout (Phase 5)");
+    private final PrimaryButton checkoutBtn = new PrimaryButton("Checkout & Pay");
     private final SecondaryButton holdBtn = new SecondaryButton("Hold [F8]");
     private final SecondaryButton discountBtn = new SecondaryButton("Discount");
     private final SecondaryButton transferBtn = new SecondaryButton("Transfer Table");
@@ -114,9 +114,10 @@ public final class PosTerminalView extends BorderPane {
         setTop(buildTopActionBar());
         setLeft(buildCategoryPanel());
 
-        productGrid.setPadding(new Insets(12));
+        productGrid.setPadding(new Insets(4, 8, 12, 4));
         ScrollPane gridScroll = new ScrollPane(productGrid);
         gridScroll.setFitToWidth(true);
+        gridScroll.getStyleClass().add("pos-scroll-pane");
         this.gridStateContainer = new ViewStateContainer(gridScroll, this::loadCatalog);
         setCenter(gridStateContainer);
 
@@ -159,11 +160,12 @@ public final class PosTerminalView extends BorderPane {
 
         ScrollPane scroll = new ScrollPane(categoryRail);
         scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("pos-scroll-pane");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         VBox panel = new VBox(10, title, scroll);
         panel.getStyleClass().add("pos-card");
-        panel.setPrefWidth(195);
+        panel.setPrefWidth(190);
         BorderPane.setMargin(panel, new Insets(0, 12, 0, 0));
         return panel;
     }
@@ -175,6 +177,7 @@ public final class PosTerminalView extends BorderPane {
 
         ScrollPane itemsScroll = new ScrollPane(cartItemsBox);
         itemsScroll.setFitToWidth(true);
+        itemsScroll.getStyleClass().add("pos-scroll-pane");
         VBox.setVgrow(itemsScroll, Priority.ALWAYS);
 
         grandTotalLabel.getStyleClass().add("pos-total-label");
@@ -186,7 +189,9 @@ public final class PosTerminalView extends BorderPane {
         transferBtn.setOnAction(e -> transferTablePrompt());
         cancelOrderBtn.setOnAction(e -> cancelCurrentOrder());
         sendKitchenBtn.setOnAction(e -> sendCurrentOrderToKitchen());
+        sendKitchenBtn.getStyleClass().setAll("button", "pos-btn-kitchen");
         checkoutBtn.setOnAction(e -> openCheckoutDialog());
+        checkoutBtn.getStyleClass().setAll("button", "pos-btn-checkout");
         checkoutBtn.setMaxWidth(Double.MAX_VALUE);
         sendKitchenBtn.setMaxWidth(Double.MAX_VALUE);
 
@@ -364,9 +369,18 @@ public final class PosTerminalView extends BorderPane {
             return;
         }
         if (activeOrder == null) {
-            banner.showError("Click 'New Order [F4]' or pick a table first.");
+            String orderType = orderTypeCombo.getValue() != null ? orderTypeCombo.getValue() : "COUNTER";
+            if ("DINE_IN".equals(orderType)) {
+                selectTableForOrder(product);
+            } else {
+                createOrderOnServer(orderType, null, null, product);
+            }
             return;
         }
+        promptModifiersAndAddItem(product);
+    }
+
+    private void promptModifiersAndAddItem(ProductDto product) {
         boolean hasChoices = (product.variants() != null && !product.variants().isEmpty())
                 || (product.modifierGroups() != null && !product.modifierGroups().isEmpty());
 
@@ -385,13 +399,17 @@ public final class PosTerminalView extends BorderPane {
         }
         String orderType = orderTypeCombo.getValue();
         if ("DINE_IN".equals(orderType)) {
-            selectTableForOrder();
+            selectTableForOrder(null);
             return;
         }
-        createOrderOnServer(orderType, null, null);
+        createOrderOnServer(orderType, null, null, null);
     }
 
     private void selectTableForOrder() {
+        selectTableForOrder(null);
+    }
+
+    private void selectTableForOrder(ProductDto pendingProduct) {
         if (offlineMode) {
             return;
         }
@@ -413,10 +431,10 @@ public final class PosTerminalView extends BorderPane {
             dialog.setHeaderText("Choose an available table (or an occupied table to open its order)");
             dialog.showAndWait().ifPresent(table -> {
                 if (table.activeOrderId() != null) {
-                    reloadActiveOrder(table.activeOrderId());
+                    reloadActiveOrder(table.activeOrderId(), pendingProduct);
                 } else {
                     orderTypeCombo.setValue("DINE_IN");
-                    createOrderOnServer("DINE_IN", table.id(), table.version());
+                    createOrderOnServer("DINE_IN", table.id(), table.version(), pendingProduct);
                 }
             });
         });
@@ -424,7 +442,7 @@ public final class PosTerminalView extends BorderPane {
         ioExecutor.submit(task);
     }
 
-    private void createOrderOnServer(String orderType, UUID tableId, Long tableVersion) {
+    private void createOrderOnServer(String orderType, UUID tableId, Long tableVersion, ProductDto pendingProduct) {
         banner.clear();
         String token = sessionContext.accessToken();
         CreateOrderRequest req = new CreateOrderRequest(orderType, tableId, tableVersion, null, 1, null, null);
@@ -438,6 +456,9 @@ public final class PosTerminalView extends BorderPane {
             this.activeOrder = task.getValue();
             banner.showSuccess("Created order " + activeOrder.orderNumber());
             refreshCartUi();
+            if (pendingProduct != null) {
+                promptModifiersAndAddItem(pendingProduct);
+            }
         });
         task.setOnFailed(e -> handleApiError(task.getException()));
         ioExecutor.submit(task);
@@ -677,6 +698,10 @@ public final class PosTerminalView extends BorderPane {
     }
 
     private void reloadActiveOrder(UUID orderId) {
+        reloadActiveOrder(orderId, null);
+    }
+
+    private void reloadActiveOrder(UUID orderId, ProductDto pendingProduct) {
         String token = sessionContext.accessToken();
         Task<OrderDto> task = new Task<>() {
             @Override
@@ -687,6 +712,9 @@ public final class PosTerminalView extends BorderPane {
         task.setOnSucceeded(e -> {
             this.activeOrder = task.getValue();
             refreshCartUi();
+            if (pendingProduct != null) {
+                promptModifiersAndAddItem(pendingProduct);
+            }
         });
         task.setOnFailed(e -> handleApiError(task.getException()));
         ioExecutor.submit(task);
@@ -708,10 +736,14 @@ public final class PosTerminalView extends BorderPane {
             orderHeaderLabel.setText("No Active Order");
             orderStatusBadge.setText("IDLE");
             orderStatusBadge.setTone(StatusBadge.Tone.NEUTRAL);
-            subtotalLabel.setText("Subtotal: 0.00");
-            discountLabel.setText("Discount: 0.00");
-            taxLabel.setText("Tax: 0.00");
-            grandTotalLabel.setText("Total: 0.00");
+            subtotalLabel.setText("Subtotal: $0.00");
+            discountLabel.setText("Discount: $0.00");
+            taxLabel.setText("Tax: $0.00");
+            grandTotalLabel.setText("Total: $0.00");
+            cartItemsBox.getChildren().add(buildCartEmptyCard(
+                    "Start an Order",
+                    "Tap any item on the menu to open a Counter order automatically, or click Pick Table [F6] for Dine-In."
+            ));
             return;
         }
 
@@ -720,21 +752,40 @@ public final class PosTerminalView extends BorderPane {
         orderStatusBadge.setTone(StatusBadge.Tone.SUCCESS);
 
         String curr = activeOrder.currencyCode();
-        for (OrderItemDto item : activeOrder.items()) {
-            cartItemsBox.getChildren().add(new OrderItemRow(
-                    item,
-                    curr,
-                    canEdit,
-                    () -> adjustItemQty(item, BigDecimal.ONE),
-                    () -> adjustItemQty(item, BigDecimal.ONE.negate()),
-                    () -> removeItem(item)
+        if (activeOrder.items().isEmpty()) {
+            cartItemsBox.getChildren().add(buildCartEmptyCard(
+                    "Cart is Empty",
+                    "Tap menu items on the left to add them. Once added, Send to Kitchen [F9] and Checkout & Pay become active."
             ));
+        } else {
+            for (OrderItemDto item : activeOrder.items()) {
+                cartItemsBox.getChildren().add(new OrderItemRow(
+                        item,
+                        curr,
+                        canEdit,
+                        () -> adjustItemQty(item, BigDecimal.ONE),
+                        () -> adjustItemQty(item, BigDecimal.ONE.negate()),
+                        () -> removeItem(item)
+                ));
+            }
         }
 
         subtotalLabel.setText("Subtotal: " + curr + " " + fmt(activeOrder.subtotalAmount()));
         discountLabel.setText("Discount: -" + curr + " " + fmt(activeOrder.discountAmount()));
         taxLabel.setText("Tax: " + curr + " " + fmt(activeOrder.taxAmount()));
         grandTotalLabel.setText("Total: " + curr + " " + fmt(activeOrder.totalAmount()));
+    }
+
+    private static VBox buildCartEmptyCard(String title, String message) {
+        Label titleLbl = new Label(title);
+        titleLbl.getStyleClass().add("pos-heading-md");
+        Label msgLbl = new Label(message);
+        msgLbl.getStyleClass().add("pos-text-muted");
+        msgLbl.setWrapText(true);
+        msgLbl.setStyle("-fx-text-alignment: center;");
+        VBox box = new VBox(6, titleLbl, msgLbl);
+        box.getStyleClass().add("pos-cart-empty");
+        return box;
     }
 
     private static String fmt(BigDecimal val) {

@@ -53,6 +53,7 @@ public final class MenuManagementView extends VBox {
     private final TextField skuField = new TextField();
     private final TextField prodNameField = new TextField();
     private final TextField priceField = new TextField();
+    private final TextField imageRefField = new TextField();
     private final ViewStateContainer stateContainer;
 
     public MenuManagementView(
@@ -146,11 +147,16 @@ public final class MenuManagementView extends VBox {
         priceField.setPromptText("Price");
         priceField.setPrefWidth(95);
         priceField.getStyleClass().add("pos-input");
+        imageRefField.setPromptText("Image URL / path (optional)");
+        imageRefField.getStyleClass().add("pos-input");
+        SecondaryButton browseImageBtn = new SecondaryButton("Choose Image...");
+        browseImageBtn.setOnAction(e -> chooseProductImage());
         PrimaryButton addProdBtn = new PrimaryButton("Add Product");
         addProdBtn.setOnAction(e -> createProduct());
 
         HBox catRow = new HBox(8, catCodeField, catNameField, addCatBtn);
-        HBox prodRow = new HBox(8, categoryCombo, skuField, prodNameField, priceField, addProdBtn);
+        HBox prodRow = new HBox(8, categoryCombo, skuField, prodNameField, priceField, imageRefField, browseImageBtn, addProdBtn);
+        HBox.setHgrow(imageRefField, Priority.ALWAYS);
         VBox card = new VBox(8, catRow, prodRow);
         card.getStyleClass().add("pos-card");
         return card;
@@ -216,9 +222,11 @@ public final class MenuManagementView extends VBox {
             return;
         }
         BigDecimal price = new BigDecimal(priceField.getText().trim());
+        String imageRef = imageRefField.getText() != null && !imageRefField.getText().isBlank()
+                ? imageRefField.getText().trim() : null;
         String token = sessionContext.accessToken();
         SaveProductRequest req = new SaveProductRequest(
-                cat.id(), null, sku, null, name, null, price, "FIXED", "STANDARD", null, 0, true, List.of()
+                cat.id(), null, sku, null, name, null, price, "FIXED", "STANDARD", imageRef, 0, true, List.of()
         );
         Task<ProductDto> task = new Task<>() {
             @Override
@@ -230,11 +238,24 @@ public final class MenuManagementView extends VBox {
             skuField.clear();
             prodNameField.clear();
             priceField.clear();
+            imageRefField.clear();
             banner.showSuccess("Created product " + task.getValue().name());
             loadData();
         });
         task.setOnFailed(e -> handleFailure(task.getException()));
         ioExecutor.submit(task);
+    }
+
+    private void chooseProductImage() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Product Image");
+        chooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.gif")
+        );
+        java.io.File chosen = chooser.showOpenDialog(getScene() != null ? getScene().getWindow() : null);
+        if (chosen != null) {
+            imageRefField.setText(chosen.toURI().toString());
+        }
     }
 
     private void toggleProductAvailability(ProductDto product) {

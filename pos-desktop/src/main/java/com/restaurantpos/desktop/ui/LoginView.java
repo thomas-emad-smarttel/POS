@@ -21,6 +21,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -143,7 +144,7 @@ public final class LoginView extends StackPane {
         signInButton.setDisable(true);
         signInButton.setText("Signing In...");
 
-        LoginRequest request = new LoginRequest(tenantCode, username, password, null, null);
+        LoginRequest request = new LoginRequest(tenantCode, username, password, null, resolveConfiguredTerminalId());
         Task<ApiResponse<LoginResponse>> task = new Task<>() {
             @Override
             protected ApiResponse<LoginResponse> call() throws Exception {
@@ -172,5 +173,17 @@ public final class LoginView extends StackPane {
         });
 
         ioExecutor.submit(task);
+    }
+
+    private static UUID resolveConfiguredTerminalId() {
+        String raw = System.getProperty("pos.terminal.id");
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 }

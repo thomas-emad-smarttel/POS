@@ -19,15 +19,18 @@ import com.restaurantpos.shared.security.PermissionCode;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.List;
@@ -35,8 +38,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Lightweight, touch/keyboard-friendly Kitchen Display System (KDS) view showing station ticket cards,
- * individual item readiness controls, elapsed/overdue indicators, unrouted item resolution, and print retries.
+ * Kitchen Display System (KDS) view showing high-contrast bump cards, status-colored headers,
+ * SLA timers, modifier/note callouts, single primary next-step actions, and subtle secondary controls.
  */
 public final class KitchenDisplayView extends VBox {
 
@@ -49,8 +52,9 @@ public final class KitchenDisplayView extends VBox {
     private final ComboBox<KitchenStationDto> stationCombo = new ComboBox<>();
     private final ComboBox<String> sortCombo = new ComboBox<>();
     private final StatusBadge syncBadge = new StatusBadge("Synced", StatusBadge.Tone.SUCCESS);
+    private final StatusBadge summaryBadge = new StatusBadge("0 Active", StatusBadge.Tone.NEUTRAL);
     private final HBox alertBar = new HBox(8);
-    private final FlowPane ticketsFlow = new FlowPane(12, 12);
+    private final FlowPane ticketsFlow = new FlowPane(16, 16);
 
     private KitchenStationDto selectedStation;
 
@@ -91,22 +95,29 @@ public final class KitchenDisplayView extends VBox {
             refreshTickets();
         });
 
-        Label title = new Label("Kitchen Display System (KDS)");
+        Label title = new Label("Kitchen Display (KDS)");
         title.getStyleClass().add("pos-heading-lg");
 
         SecondaryButton refreshBtn = new SecondaryButton("Refresh [F5]");
         refreshBtn.setOnAction(e -> refreshAll());
 
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
         HBox topBar = new HBox(10, title, new Label("Station:"), stationCombo, new Label("Sort:"), sortCombo,
-                refreshBtn, syncBadge);
+                refreshBtn, spacer, summaryBadge, syncBadge);
         topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.getStyleClass().add("pos-card");
+        topBar.setPadding(new Insets(12, 16, 12, 16));
 
         alertBar.setAlignment(Pos.CENTER_LEFT);
         alertBar.setVisible(false);
         alertBar.setManaged(false);
 
+        ticketsFlow.setPadding(new Insets(2, 4, 12, 2));
         ScrollPane scroll = new ScrollPane(ticketsFlow);
         scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("pos-scroll-pane");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
@@ -146,7 +157,10 @@ public final class KitchenDisplayView extends VBox {
                 selectedStation = stationCombo.getValue();
                 refreshTickets();
             } else {
-                ticketsFlow.getChildren().setAll(new Label("No active kitchen stations configured for this branch."));
+                ticketsFlow.getChildren().setAll(buildEmptyCard(
+                        "No Active Kitchen Stations",
+                        "Configure an active kitchen station for this branch to view incoming tickets."
+                ));
             }
         });
         task.setOnFailed(e -> handleApiError(task.getException()));
@@ -172,7 +186,12 @@ public final class KitchenDisplayView extends VBox {
         };
         task.setOnSucceeded(e -> {
             KdsLoadResult res = task.getValue();
-            syncBadge.setText("Live (" + res.tickets().size() + ")");
+            long prepCount = res.tickets().stream()
+                    .filter(t -> "PREPARING".equals(t.status()) || "ACCEPTED".equals(t.status())).count();
+            long readyCount = res.tickets().stream()
+                    .filter(t -> "READY".equals(t.status())).count();
+            summaryBadge.setText(res.tickets().size() + " Active • " + prepCount + " Prep • " + readyCount + " Ready");
+            syncBadge.setText("Live");
             syncBadge.setTone(StatusBadge.Tone.SUCCESS);
             renderAlerts(res.unrouted(), res.failedPrints());
             renderTickets(res.tickets());
@@ -212,7 +231,10 @@ public final class KitchenDisplayView extends VBox {
     private void renderTickets(List<KitchenTicketDto> tickets) {
         ticketsFlow.getChildren().clear();
         if (tickets.isEmpty()) {
-            ticketsFlow.getChildren().add(new Label("No active tickets for " + selectedStation.name()));
+            ticketsFlow.getChildren().add(buildEmptyCard(
+                    "All Caught Up — " + selectedStation.name(),
+                    "No open tickets in queue. New orders sent from the POS terminal will appear here automatically."
+            ));
             return;
         }
         for (KitchenTicketDto ticket : tickets) {
@@ -221,112 +243,247 @@ public final class KitchenDisplayView extends VBox {
     }
 
     private VBox buildTicketCard(KitchenTicketDto t) {
-        VBox card = new VBox(8);
-        card.getStyleClass().add("pos-card");
-        card.setPrefWidth(305);
-        if (t.overdue()) {
-            card.setStyle("-fx-border-color: #DC2626; -fx-border-width: 2;");
-        } else if ("READY".equals(t.status())) {
-            card.setStyle("-fx-border-color: #16A34A; -fx-border-width: 2;");
-        }
+        VBox card = new VBox(0);
+        card.getStyleClass().add("pos-kds-card");
+        card.setMinWidth(340);
+        card.setPrefWidth(355);
+        card.setMaxWidth(365);
 
-        Label ticketNumLbl = new Label(t.ticketNumber());
-        ticketNumLbl.getStyleClass().add("pos-heading-md");
+        String headerClass = resolveHeaderClass(t);
+        String shortOrder = shortenCode(t.orderNumberSnapshot());
+        String headline = t.tableLabelSnapshot() != null && !t.tableLabelSnapshot().isBlank()
+                ? "Table " + t.tableLabelSnapshot() + "  •  #" + shortOrder
+                : t.orderTypeSnapshot() + "  •  #" + shortOrder;
 
-        StatusBadge.Tone statusTone = switch (t.status()) {
-            case "READY" -> StatusBadge.Tone.SUCCESS;
-            case "ON_HOLD" -> StatusBadge.Tone.WARNING;
-            case "NEW", "QUEUED" -> StatusBadge.Tone.NEUTRAL;
-            default -> StatusBadge.Tone.WARNING;
-        };
-        StatusBadge stBadge = new StatusBadge(t.status() + " v" + t.version(), statusTone);
-        HBox head = new HBox(8, ticketNumLbl, stBadge);
-        head.setAlignment(Pos.CENTER_LEFT);
+        Label titleLbl = new Label(headline);
+        titleLbl.getStyleClass().add("pos-kds-title");
 
-        String tablePart = t.tableLabelSnapshot() != null ? " | Table " + t.tableLabelSnapshot() : "";
-        String kindPart = !"INITIAL".equals(t.ticketKind()) ? " [" + t.ticketKind() + "]" : "";
-        Label metaLbl = new Label(t.orderNumberSnapshot() + " | " + t.orderTypeSnapshot() + tablePart + kindPart);
-        metaLbl.setWrapText(true);
+        String sub = t.status()
+                + (!"INITIAL".equals(t.ticketKind()) ? " • " + t.ticketKind() : "")
+                + (!"NORMAL".equals(t.priorityLevel()) ? " • " + t.priorityLevel() : "");
+        Label subLbl = new Label(sub);
+        subLbl.getStyleClass().add("pos-kds-subtitle");
+        VBox headLeft = new VBox(2, titleLbl, subLbl);
+        HBox.setHgrow(headLeft, Priority.ALWAYS);
 
         String elapsedText = formatElapsed(t.elapsedSeconds()) + " / " + t.expectedPrepMinutes() + "m"
-                + (t.overdue() ? " OVERDUE" : "")
-                + (!"NORMAL".equals(t.priorityLevel()) ? " | " + t.priorityLevel() : "");
+                + (t.overdue() ? " LATE" : "");
         Label timerLbl = new Label(elapsedText);
-        timerLbl.getStyleClass().add(t.overdue() ? "pos-text-danger" : "pos-text-muted");
+        timerLbl.getStyleClass().add("pos-kds-timer");
+        timerLbl.setMinWidth(Region.USE_PREF_SIZE);
 
-        VBox itemsBox = new VBox(4);
+        HBox header = new HBox(10, headLeft, timerLbl);
+        header.getStyleClass().addAll("pos-kds-header", headerClass);
+        header.setAlignment(Pos.CENTER_LEFT);
+        Tooltip.install(header, new Tooltip("Ticket: " + t.ticketNumber() + "\nOrder: " + t.orderNumberSnapshot()));
+
+        VBox itemsBox = new VBox(8);
         boolean canReadyItem = sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_READY, PermissionCode.KITCHEN_UPDATE);
         for (KitchenTicketItemDto item : t.items()) {
-            String qty = item.quantity().stripTrailingZeros().toPlainString();
-            String mods = item.selectedModifiers().isEmpty() ? "" : "\n  + " + String.join(", ", item.selectedModifiers());
-            String note = item.notes() != null && !item.notes().isBlank() ? "\n  [NOTE] " + item.notes() : "";
-            Label itemLbl = new Label(qty + "x " + item.itemNameSnapshot() + " [" + item.status() + "]" + mods + note);
-            itemLbl.setWrapText(true);
-            HBox iRow = new HBox(6, itemLbl);
-            iRow.setAlignment(Pos.CENTER_LEFT);
-            HBox.setHgrow(itemLbl, Priority.ALWAYS);
-            if (canReadyItem && !"READY".equals(item.status()) && !"CANCELLED".equals(item.status()) && !"SERVED".equals(item.status())) {
-                SecondaryButton itemReadyBtn = new SecondaryButton("Ready");
-                itemReadyBtn.setOnAction(e -> runItemAction(t.id(), item.id(), "READY", t.version()));
-                iRow.getChildren().add(itemReadyBtn);
-            }
-            itemsBox.getChildren().add(iRow);
+            itemsBox.getChildren().add(buildTicketItemRow(t, item, canReadyItem));
         }
 
-        HBox actions1 = new HBox(6);
+        Region bodySpacer = new Region();
+        VBox.setVgrow(bodySpacer, Priority.ALWAYS);
+
+        VBox controlsBox = buildControlsSection(t);
+
+        VBox body = new VBox(12, itemsBox, bodySpacer, controlsBox);
+        body.getStyleClass().add("pos-kds-body");
+        VBox.setVgrow(body, Priority.ALWAYS);
+
+        card.getChildren().addAll(header, body);
+        return card;
+    }
+
+    private VBox buildTicketItemRow(KitchenTicketDto t, KitchenTicketItemDto item, boolean canReadyItem) {
+        String qty = item.quantity().stripTrailingZeros().toPlainString();
+        Label qtyBadge = new Label(qty + "x");
+        qtyBadge.getStyleClass().add("pos-kds-qty");
+        qtyBadge.setMinWidth(Region.USE_PREF_SIZE);
+
+        Label nameLbl = new Label(item.itemNameSnapshot());
+        nameLbl.getStyleClass().add("pos-kds-item-name");
+        nameLbl.setWrapText(true);
+        HBox.setHgrow(nameLbl, Priority.ALWAYS);
+
+        HBox topRow = new HBox(8, qtyBadge, nameLbl);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        boolean itemDone = "READY".equals(item.status()) || "SERVED".equals(item.status());
+        if (itemDone) {
+            StatusBadge donePill = new StatusBadge(item.status(), StatusBadge.Tone.SUCCESS);
+            donePill.setMinWidth(Region.USE_PREF_SIZE);
+            topRow.getChildren().add(donePill);
+        } else if (canReadyItem && !"CANCELLED".equals(item.status()) && !"ON_HOLD".equals(t.status())) {
+            Button itemDoneBtn = new Button("Done");
+            itemDoneBtn.getStyleClass().add("pos-kds-subtle-btn");
+            itemDoneBtn.setMinWidth(Region.USE_PREF_SIZE);
+            itemDoneBtn.setOnAction(e -> runItemAction(t.id(), item.id(), "READY", t.version()));
+            topRow.getChildren().add(itemDoneBtn);
+        }
+
+        VBox rowBox = new VBox(5, topRow);
+        rowBox.getStyleClass().add("pos-kds-item-row");
+        if (itemDone) {
+            rowBox.getStyleClass().add("pos-kds-item-ready");
+        }
+
+        if (!item.selectedModifiers().isEmpty()) {
+            Label modsLbl = new Label("+ " + String.join(", ", item.selectedModifiers()));
+            modsLbl.getStyleClass().add("pos-text-muted");
+            modsLbl.setPadding(new Insets(0, 0, 0, 34));
+            modsLbl.setWrapText(true);
+            rowBox.getChildren().add(modsLbl);
+        }
+        if (item.notes() != null && !item.notes().isBlank()) {
+            Label noteLbl = new Label("NOTE: " + item.notes());
+            noteLbl.setStyle("-fx-background-color: #FEF3C7; -fx-text-fill: #92400E; -fx-padding: 3 7; -fx-background-radius: 4; -fx-font-size: 12px; -fx-font-weight: 600;");
+            noteLbl.setWrapText(true);
+            rowBox.getChildren().add(noteLbl);
+        }
+        return rowBox;
+    }
+
+    private VBox buildControlsSection(KitchenTicketDto t) {
+        VBox box = new VBox(8);
+
+        Button primaryAction = buildPrimaryActionButton(t);
+        if (primaryAction != null) {
+            primaryAction.setMaxWidth(Double.MAX_VALUE);
+            box.getChildren().add(primaryAction);
+        }
+
+        HBox secondaryRow = new HBox(6);
+        secondaryRow.setAlignment(Pos.CENTER_LEFT);
+
         if (("NEW".equals(t.status()) || "QUEUED".equals(t.status()))
                 && sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_ACCEPT, PermissionCode.KITCHEN_UPDATE)) {
-            SecondaryButton accBtn = new SecondaryButton("Accept");
+            Button accBtn = subtleButton("Accept");
             accBtn.setOnAction(e -> runTicketAction(t.id(), "accept", t.version(), null));
-            actions1.getChildren().add(accBtn);
+            secondaryRow.getChildren().add(accBtn);
         }
-        if (("NEW".equals(t.status()) || "QUEUED".equals(t.status()) || "ACCEPTED".equals(t.status()))
-                && sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_START, PermissionCode.KITCHEN_UPDATE)) {
-            PrimaryButton startBtn = new PrimaryButton("Start");
-            startBtn.setOnAction(e -> runTicketAction(t.id(), "start", t.version(), null));
-            actions1.getChildren().add(startBtn);
-        }
-        if ((!"READY".equals(t.status()) && !"ON_HOLD".equals(t.status()))
-                && sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_READY, PermissionCode.KITCHEN_UPDATE)) {
-            PrimaryButton readyBtn = new PrimaryButton("Ready");
-            readyBtn.setOnAction(e -> runTicketAction(t.id(), "ready", t.version(), null));
-            actions1.getChildren().add(readyBtn);
-        }
-        if ("READY".equals(t.status())
-                && sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_SERVE, PermissionCode.KITCHEN_UPDATE)) {
-            PrimaryButton serveBtn = new PrimaryButton("Serve");
-            serveBtn.setOnAction(e -> runTicketAction(t.id(), "serve", t.version(), null));
-            actions1.getChildren().add(serveBtn);
-        }
-
-        HBox actions2 = new HBox(6);
         if (sessionContext.hasPermission(PermissionCode.KITCHEN_TICKET_HOLD)) {
             if ("ON_HOLD".equals(t.status())) {
-                SecondaryButton relBtn = new SecondaryButton("Release");
+                Button relBtn = subtleButton("Resume");
                 relBtn.setOnAction(e -> runTicketAction(t.id(), "release", t.version(), "Released"));
-                actions2.getChildren().add(relBtn);
+                secondaryRow.getChildren().add(relBtn);
             } else if (!"READY".equals(t.status())) {
-                SecondaryButton holdBtn = new SecondaryButton("Hold");
+                Button holdBtn = subtleButton("Hold");
                 holdBtn.setOnAction(e -> promptReasonAndRun("Hold Ticket", "Station hold reason:", r ->
                         runTicketAction(t.id(), "hold", t.version(), r)));
-                actions2.getChildren().add(holdBtn);
+                secondaryRow.getChildren().add(holdBtn);
             }
         }
         if (sessionContext.hasPermission(PermissionCode.KITCHEN_TICKET_REFIRE)) {
-            SecondaryButton refireBtn = new SecondaryButton("Re-fire");
+            Button refireBtn = subtleButton("Re-fire");
             refireBtn.setOnAction(e -> promptReasonAndRun("Re-fire Ticket", "Re-fire reason:", r ->
                     runTicketAction(t.id(), "refire", t.version(), r)));
-            actions2.getChildren().add(refireBtn);
+            secondaryRow.getChildren().add(refireBtn);
         }
         if (sessionContext.hasPermission(PermissionCode.KITCHEN_TICKET_CANCEL)) {
-            SecondaryButton cancelBtn = new SecondaryButton("Cancel");
+            Button cancelBtn = subtleButton("Cancel");
             cancelBtn.setOnAction(e -> promptReasonAndRun("Cancel Ticket", "Cancellation reason:", r ->
                     runTicketAction(t.id(), "cancel", t.version(), r)));
-            actions2.getChildren().add(cancelBtn);
+            secondaryRow.getChildren().add(cancelBtn);
         }
 
-        card.getChildren().addAll(head, metaLbl, timerLbl, itemsBox, actions1, actions2);
-        return card;
+        if (!secondaryRow.getChildren().isEmpty()) {
+            for (var child : secondaryRow.getChildren()) {
+                if (child instanceof Button b) {
+                    b.setMaxWidth(Double.MAX_VALUE);
+                    HBox.setHgrow(b, Priority.ALWAYS);
+                }
+            }
+            box.getChildren().add(secondaryRow);
+        }
+        return box;
+    }
+
+    private Button buildPrimaryActionButton(KitchenTicketDto t) {
+        switch (t.status()) {
+            case "NEW", "QUEUED", "ACCEPTED" -> {
+                if (sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_START, PermissionCode.KITCHEN_UPDATE)) {
+                    PrimaryButton startBtn = new PrimaryButton("Start Prep");
+                    startBtn.setOnAction(e -> runTicketAction(t.id(), "start", t.version(), null));
+                    return startBtn;
+                }
+            }
+            case "PREPARING", "IN_PROGRESS" -> {
+                if (sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_READY, PermissionCode.KITCHEN_UPDATE)) {
+                    Button readyBtn = new Button("Mark Ready");
+                    readyBtn.getStyleClass().add("pos-btn-checkout");
+                    readyBtn.setOnAction(e -> runTicketAction(t.id(), "ready", t.version(), null));
+                    return readyBtn;
+                }
+            }
+            case "READY" -> {
+                if (sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_SERVE, PermissionCode.KITCHEN_UPDATE)) {
+                    Button serveBtn = new Button("Bump / Mark Served");
+                    serveBtn.getStyleClass().add("pos-btn-checkout");
+                    serveBtn.setOnAction(e -> runTicketAction(t.id(), "serve", t.version(), null));
+                    return serveBtn;
+                }
+            }
+            case "ON_HOLD" -> {
+                if (sessionContext.hasPermission(PermissionCode.KITCHEN_TICKET_HOLD)) {
+                    PrimaryButton relBtn = new PrimaryButton("Resume Prep");
+                    relBtn.setOnAction(e -> runTicketAction(t.id(), "release", t.version(), "Released"));
+                    return relBtn;
+                }
+            }
+            default -> {
+            }
+        }
+        if (!"READY".equals(t.status()) && !"ON_HOLD".equals(t.status())
+                && sessionContext.hasAnyPermission(PermissionCode.KITCHEN_TICKET_READY, PermissionCode.KITCHEN_UPDATE)) {
+            Button readyBtn = new Button("Mark Ready");
+            readyBtn.getStyleClass().add("pos-btn-checkout");
+            readyBtn.setOnAction(e -> runTicketAction(t.id(), "ready", t.version(), null));
+            return readyBtn;
+        }
+        return null;
+    }
+
+    private static Button subtleButton(String label) {
+        Button btn = new Button(label);
+        btn.getStyleClass().add("pos-kds-subtle-btn");
+        return btn;
+    }
+
+    private static String resolveHeaderClass(KitchenTicketDto t) {
+        if (t.overdue()) {
+            return "pos-kds-header-overdue";
+        }
+        return switch (t.status()) {
+            case "READY" -> "pos-kds-header-ready";
+            case "ON_HOLD" -> "pos-kds-header-hold";
+            case "ACCEPTED", "PREPARING", "IN_PROGRESS" -> "pos-kds-header-prep";
+            default -> "pos-kds-header-new";
+        };
+    }
+
+    private static String shortenCode(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "TICKET";
+        }
+        int lastDash = raw.lastIndexOf('-');
+        if (lastDash >= 0 && lastDash < raw.length() - 1) {
+            return raw.substring(lastDash + 1);
+        }
+        return raw.length() > 8 ? raw.substring(raw.length() - 8) : raw;
+    }
+
+    private static VBox buildEmptyCard(String titleText, String subtitleText) {
+        Label titleLbl = new Label(titleText);
+        titleLbl.getStyleClass().add("pos-heading-md");
+        Label subLbl = new Label(subtitleText);
+        subLbl.getStyleClass().add("pos-text-muted");
+        subLbl.setWrapText(true);
+        VBox box = new VBox(6, titleLbl, subLbl);
+        box.getStyleClass().add("pos-state-box");
+        box.setPrefWidth(480);
+        return box;
     }
 
     private void runTicketAction(UUID ticketId, String action, long version, String reason) {
