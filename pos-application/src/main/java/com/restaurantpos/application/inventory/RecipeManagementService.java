@@ -1,10 +1,8 @@
 package com.restaurantpos.application.inventory;
 
 import com.restaurantpos.application.audit.AuditRecordingService;
-import com.restaurantpos.application.security.PermissionPolicy;
 import com.restaurantpos.domain.exception.DomainException;
 import com.restaurantpos.domain.exception.ResourceNotFoundException;
-import com.restaurantpos.domain.exception.UnauthorizedOperationException;
 import com.restaurantpos.domain.inventory.CostingService;
 import com.restaurantpos.domain.inventory.InventoryBalance;
 import com.restaurantpos.domain.inventory.InventoryItem;
@@ -344,8 +342,7 @@ public class RecipeManagementService {
     }
 
     public RecipeCostPreviewDto previewRecipeCost(AccessPrincipal actor, UUID recipeId, UUID versionId) {
-        BranchId branchId = PermissionPolicy.requireBranchPermission(
-                actor, actor.tenantId(), actor.activeBranchId(), PermissionCode.INVENTORY_COST_VIEW);
+        BranchId branchId = InventoryAuthHelper.requireActiveBranchPermission(actor, PermissionCode.INVENTORY_COST_VIEW, null);
         Recipe recipe = inventoryRepo.findRecipeScoped(recipeId, actor.tenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe not found"));
         RecipeVersion rv = versionId != null
@@ -402,21 +399,13 @@ public class RecipeManagementService {
     }
 
     private BranchId requireRecipeView(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new UnauthorizedOperationException(PermissionCode.INVENTORY_RECIPE_VIEW, "Active branch session required");
-        }
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_RECIPE_VIEW)
-                ? PermissionCode.INVENTORY_RECIPE_VIEW : PermissionCode.INVENTORY_VIEW;
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        return InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_RECIPE_VIEW, PermissionCode.INVENTORY_VIEW);
     }
 
     private BranchId requireRecipeManage(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new UnauthorizedOperationException(PermissionCode.INVENTORY_RECIPE_MANAGE, "Active branch session required");
-        }
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_RECIPE_MANAGE)
-                ? PermissionCode.INVENTORY_RECIPE_MANAGE : PermissionCode.INVENTORY_MANAGE;
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        return InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_RECIPE_MANAGE, PermissionCode.INVENTORY_MANAGE);
     }
 
     private Map<UUID, InventoryItem> loadItemsMap(AccessPrincipal actor) {

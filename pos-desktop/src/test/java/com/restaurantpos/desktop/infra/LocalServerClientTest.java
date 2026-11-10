@@ -2,6 +2,8 @@ package com.restaurantpos.desktop.infra;
 
 import com.restaurantpos.shared.dto.ApiResponse;
 import com.restaurantpos.shared.dto.ServerStatusDto;
+import com.restaurantpos.shared.dto.inventory.InventoryBalanceDto;
+import com.restaurantpos.shared.dto.inventory.RecordStockAdjustmentRequest;
 import com.restaurantpos.shared.dto.kitchen.ExpoOrderDto;
 import com.restaurantpos.shared.dto.kitchen.KitchenTicketActionRequest;
 import com.restaurantpos.shared.dto.kitchen.KitchenTicketDto;
@@ -538,6 +540,96 @@ class LocalServerClientTest {
                     client.markKitchenTicketReady("t", ticketId, new KitchenTicketActionRequest(2L, null, null)));
             assertEquals(409, conflict.statusCode());
             assertEquals("OPTIMISTIC_LOCK_CONFLICT", conflict.errorCode());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void deserializesInventoryBalancesAndInsufficientStockError() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        UUID balId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        UUID locId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        UUID unitId = UUID.randomUUID();
+
+        String balancesJson = """
+                {
+                  "success": true,
+                  "data": [{
+                    "id": "%s",
+                    "branchId": "%s",
+                    "stockLocationId": "%s",
+                    "locationCode": "COOLER",
+                    "locationName": "Walk-In Cooler",
+                    "inventoryItemId": "%s",
+                    "itemSku": "ING-BEEF",
+                    "itemName": "Ground Beef",
+                    "unitCode": "KG",
+                    "onHandQuantity": 15.0000,
+                    "reservedQuantity": 3.0000,
+                    "availableQuantity": 12.0000,
+                    "reorderLevel": 5.0000,
+                    "averageUnitCost": 9.5000,
+                    "valuationAmount": 142.5000,
+                    "lowStock": false,
+                    "lastMovementAt": "2026-11-10T15:00:00Z",
+                    "version": 2
+                  }],
+                  "error": null,
+                  "correlationId": "corr-i1",
+                  "timestamp": "2026-11-10T15:00:00Z"
+                }
+                """.formatted(balId, branchId, locId, itemId);
+
+        String insufficientJson = """
+                {
+                  "success": false,
+                  "data": null,
+                  "error": {
+                    "code": "INSUFFICIENT_STOCK",
+                    "message": "Insufficient available stock",
+                    "correlationId": "corr-i2",
+                    "timestamp": "2026-11-10T15:01:00Z",
+                    "details": []
+                  },
+                  "correlationId": "corr-i2",
+                  "timestamp": "2026-11-10T15:01:00Z"
+                }
+                """;
+
+        server.createContext("/api/v1/inventory/balances", exchange -> {
+            byte[] bytes = balancesJson.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        });
+        server.createContext("/api/v1/inventory/adjustments", exchange -> {
+            byte[] bytes = insufficientJson.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(422, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        });
+        server.start();
+        try {
+            int port = server.getAddress().getPort();
+            LocalServerClient client = new LocalServerClient("http://127.0.0.1:" + port);
+
+            ApiResponse<List<InventoryBalanceDto>> balances = client.listInventoryBalances("t");
+            assertEquals(1, balances.data().size());
+            assertEquals(0, new BigDecimal("12.0000").compareTo(balances.data().get(0).availableQuantity()));
+
+            ApiClientException ex = assertThrows(ApiClientException.class, () ->
+                    client.recordStockAdjustment("t", new RecordStockAdjustmentRequest(
+                            locId, itemId, unitId, BigDecimal.TEN, "STOCK_ADJUSTMENT_OUT",
+                            null, "Over", null, null, "k-1", null, false)));
+            assertEquals(422, ex.statusCode());
+            assertEquals("INSUFFICIENT_STOCK", ex.errorCode());
         } finally {
             server.stop(0);
         }

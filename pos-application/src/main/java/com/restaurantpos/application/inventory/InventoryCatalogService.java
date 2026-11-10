@@ -1,7 +1,6 @@
 package com.restaurantpos.application.inventory;
 
 import com.restaurantpos.application.audit.AuditRecordingService;
-import com.restaurantpos.application.security.PermissionPolicy;
 import com.restaurantpos.domain.exception.ConcurrentModificationDomainException;
 import com.restaurantpos.domain.exception.DomainException;
 import com.restaurantpos.domain.exception.ResourceNotFoundException;
@@ -309,10 +308,8 @@ public class InventoryCatalogService {
     }
 
     public InventoryAlertDto resolveAlert(AccessPrincipal actor, UUID alertId, ResolveInventoryAlertRequest req, CorrelationId corr) {
-        BranchId branchId = PermissionPolicy.requireBranchPermission(
-                actor, actor.tenantId(), actor.activeBranchId(),
-                actor.hasPermission(PermissionCode.INVENTORY_ALERT_MANAGE) ? PermissionCode.INVENTORY_ALERT_MANAGE : PermissionCode.INVENTORY_MANAGE
-        );
+        BranchId branchId = InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_ALERT_MANAGE, PermissionCode.INVENTORY_MANAGE);
         InventoryAlert existing = inventoryRepo.findAlertScoped(alertId, actor.tenantId(), branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory alert not found in branch"));
         if (existing.version() != req.expectedVersion()) {
@@ -336,31 +333,17 @@ public class InventoryCatalogService {
     }
 
     private BranchId requireViewPermission(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new com.restaurantpos.domain.exception.UnauthorizedOperationException(
-                    PermissionCode.INVENTORY_VIEW, "Active branch session is required");
-        }
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), PermissionCode.INVENTORY_VIEW);
+        return InventoryAuthHelper.requireActiveBranchPermission(actor, PermissionCode.INVENTORY_VIEW, null);
     }
 
     private BranchId requireManageItemPermission(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new com.restaurantpos.domain.exception.UnauthorizedOperationException(
-                    PermissionCode.INVENTORY_ITEM_MANAGE, "Active branch session is required");
-        }
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_ITEM_MANAGE)
-                ? PermissionCode.INVENTORY_ITEM_MANAGE : PermissionCode.INVENTORY_MANAGE;
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        return InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_ITEM_MANAGE, PermissionCode.INVENTORY_MANAGE);
     }
 
     private BranchId requireLocationPermission(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new com.restaurantpos.domain.exception.UnauthorizedOperationException(
-                    PermissionCode.INVENTORY_LOCATION_MANAGE, "Active branch session is required");
-        }
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_LOCATION_MANAGE)
-                ? PermissionCode.INVENTORY_LOCATION_MANAGE : PermissionCode.INVENTORY_MANAGE;
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        return InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_LOCATION_MANAGE, PermissionCode.INVENTORY_MANAGE);
     }
 
     private static InventoryItemDto toItemDto(InventoryItem i, InventoryCategory c, UnitOfMeasure u, boolean includeCost) {

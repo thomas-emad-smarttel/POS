@@ -2,6 +2,7 @@ package com.restaurantpos.infrastructure.persistence.adapter;
 
 import com.restaurantpos.domain.order.OrderAggregate;
 import com.restaurantpos.domain.order.OrderItemDetail;
+import com.restaurantpos.domain.port.InventoryPayloadCodecPort;
 import com.restaurantpos.domain.port.KitchenDispatchPort;
 import com.restaurantpos.domain.port.KitchenPayloadCodecPort;
 import com.restaurantpos.infrastructure.persistence.entity.DiningTableEntity;
@@ -14,6 +15,7 @@ import com.restaurantpos.infrastructure.persistence.repository.ProductJpaReposit
 import com.restaurantpos.infrastructure.persistence.repository.UserJpaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +26,8 @@ import java.util.UUID;
 
 /**
  * Persists immutable snapshot outbox events (`ORDER_SENT_TO_KITCHEN`, `ORDER_CANCELLED_IN_KITCHEN`)
- * inside the order transaction so KDS consumes reliable, idempotent events.
+ * alongside reliable inventory reservation/release outbox events (`INVENTORY_RESERVE_ORDER`,
+ * `INVENTORY_RELEASE_ORDER`) inside the same order transaction.
  */
 @Component
 @ConditionalOnProperty(name = "pos.persistence.enabled", havingValue = "true", matchIfMissing = true)
@@ -37,6 +40,7 @@ public class OutboxKitchenDispatchAdapter implements KitchenDispatchPort {
     private final DiningTableJpaRepository tableRepo;
     private final UserJpaRepository userRepo;
     private final KitchenPayloadCodecPort codec;
+    private final InventoryPayloadCodecPort inventoryCodec;
 
     public OutboxKitchenDispatchAdapter(
             OutboxEventJpaRepository outboxRepository,
@@ -45,11 +49,24 @@ public class OutboxKitchenDispatchAdapter implements KitchenDispatchPort {
             UserJpaRepository userRepo,
             KitchenPayloadCodecPort codec
     ) {
+        this(outboxRepository, productRepo, tableRepo, userRepo, codec, null);
+    }
+
+    @Autowired
+    public OutboxKitchenDispatchAdapter(
+            OutboxEventJpaRepository outboxRepository,
+            ProductJpaRepository productRepo,
+            DiningTableJpaRepository tableRepo,
+            UserJpaRepository userRepo,
+            KitchenPayloadCodecPort codec,
+            InventoryPayloadCodecPort inventoryCodec
+    ) {
         this.outboxRepository = outboxRepository;
         this.productRepo = productRepo;
         this.tableRepo = tableRepo;
         this.userRepo = userRepo;
         this.codec = codec;
+        this.inventoryCodec = inventoryCodec;
     }
 
     @Override
@@ -94,6 +111,37 @@ public class OutboxKitchenDispatchAdapter implements KitchenDispatchPort {
                 payload,
                 Instant.now()
         ));
+        if (inventoryCodec != null) {
+            UUID invEventId = UUID.randomUUID();
+            List<InventoryPayloadCodecPort.OrderPrepItemSnapshot> invItems = order.items().stream()
+                    .filter(i -> !i.voided())
+                    .map(i -> new InventoryPayloadCodecPort.OrderPrepItemSnapshot(
+                            i.id(),
+                            null,
+                            i.productId(),
+                            i.productVariantId(),
+                            i.quantity(),
+                            i.modifiers().stream()
+                                    .map(m -> m.modifierId())
+                                    .filter(java.util.Objects::nonNull)
+                                    .toList()
+                    ))
+                    .toList();
+            String invJson = inventoryCodec.encodeReserveOrder(new InventoryPayloadCodecPort.ReserveOrderPayload(
+                    order.id(), order.orderNumber(), waiterId, invItems
+            ));
+            outboxRepository.save(new OutboxEventEntity(
+                    invEventId,
+                    order.tenantId().value(),
+                    order.branchId().value(),
+                    "Order",
+                    order.id(),
+                    "INVENTORY_RESERVE_ORDER",
+                    "inv-reserve-" + order.id() + "-" + invEventId,
+                    invJson,
+                    Instant.now()
+            ));
+        }
         LOG.info("Dispatched order {} to kitchen outbox eventId={}", order.orderNumber(), eventId);
     }
 
@@ -112,6 +160,18 @@ public class OutboxKitchenDispatchAdapter implements KitchenDispatchPort {
                 order.id(),
                 "ORDER_CANCELLED_IN_KITCHEN",
                 "kitchen-cancel-" + order.id() + "-" + eventId,
+                payload,
+                Instant.now()
+        ));
+        UUID invEventId = UUID.randomUUID();
+        outboxRepository.save(new OutboxEventEntity(
+                invEventId,
+                order.tenantId().value(),
+                order.branchId().value(),
+                "Order",
+                order.id(),
+                "INVENTORY_RELEASE_ORDER",
+                "inv-release-" + order.id() + "-" + invEventId,
                 payload,
                 Instant.now()
         ));

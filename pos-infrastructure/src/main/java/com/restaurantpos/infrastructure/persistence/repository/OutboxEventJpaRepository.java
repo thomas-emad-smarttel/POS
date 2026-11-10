@@ -25,4 +25,24 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntit
             @Param("now") Instant now,
             @Param("batchSize") int batchSize
     );
+
+    @Query(value = """
+            SELECT *
+            FROM outbox_events
+            WHERE event_type IN (
+                'INVENTORY_RESERVE_ORDER',
+                'INVENTORY_CONSUME_PREP',
+                'INVENTORY_RELEASE_ORDER',
+                'INVENTORY_REFIRE_TICKET'
+            )
+              AND status = 'PENDING'
+              AND next_attempt_at <= :now
+            ORDER BY sequence_num ASC
+            LIMIT :batchSize
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<OutboxEventEntity> claimPendingInventoryEvents(
+            @Param("now") Instant now,
+            @Param("batchSize") int batchSize
+    );
 }

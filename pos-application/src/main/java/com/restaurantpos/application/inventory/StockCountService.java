@@ -1,7 +1,6 @@
 package com.restaurantpos.application.inventory;
 
 import com.restaurantpos.application.audit.AuditRecordingService;
-import com.restaurantpos.application.security.PermissionPolicy;
 import com.restaurantpos.domain.exception.ConcurrentModificationDomainException;
 import com.restaurantpos.domain.exception.DomainException;
 import com.restaurantpos.domain.exception.ResourceNotFoundException;
@@ -365,28 +364,17 @@ public class StockCountService {
     }
 
     private BranchId requireCountViewPermission(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new UnauthorizedOperationException(PermissionCode.INVENTORY_VIEW, "Active branch session required");
-        }
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), PermissionCode.INVENTORY_VIEW);
+        return InventoryAuthHelper.requireActiveBranchPermission(actor, PermissionCode.INVENTORY_VIEW, null);
     }
 
     private BranchId requireCountPermission(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new UnauthorizedOperationException(PermissionCode.INVENTORY_STOCK_COUNT, "Active branch session required");
-        }
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_COUNT)
-                ? PermissionCode.INVENTORY_STOCK_COUNT : PermissionCode.INVENTORY_ADJUST;
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        return InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_COUNT, PermissionCode.INVENTORY_ADJUST);
     }
 
     private BranchId requireApprovePermission(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new UnauthorizedOperationException(PermissionCode.INVENTORY_STOCK_COUNT_APPROVE, "Active branch session required");
-        }
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_COUNT_APPROVE)
-                ? PermissionCode.INVENTORY_STOCK_COUNT_APPROVE : PermissionCode.INVENTORY_ADJUST;
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        return InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_COUNT_APPROVE, PermissionCode.INVENTORY_ADJUST);
     }
 
     private StockCountDto toDto(StockCount c, AccessPrincipal actor, BranchId branchId, boolean includeCosts) {

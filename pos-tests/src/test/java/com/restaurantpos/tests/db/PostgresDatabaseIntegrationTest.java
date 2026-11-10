@@ -160,7 +160,7 @@ class PostgresDatabaseIntegrationTest {
     @Test
     void executesAllFlywayMigrationsAgainstPostgreSql() {
         var applied = flyway.info().applied();
-        assertEquals(12, applied.length, "Expected all V001..V012 Flyway migrations to be applied");
+        assertEquals(13, applied.length, "Expected all V001..V013 Flyway migrations to be applied");
     }
 
     @Test

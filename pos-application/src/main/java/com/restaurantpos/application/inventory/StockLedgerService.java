@@ -1,7 +1,6 @@
 package com.restaurantpos.application.inventory;
 
 import com.restaurantpos.application.audit.AuditRecordingService;
-import com.restaurantpos.application.security.PermissionPolicy;
 import com.restaurantpos.domain.exception.DomainException;
 import com.restaurantpos.domain.exception.ResourceNotFoundException;
 import com.restaurantpos.domain.exception.UnauthorizedOperationException;
@@ -88,9 +87,8 @@ public class StockLedgerService {
     }
 
     public StockMovementDto recordAdjustment(AccessPrincipal actor, RecordStockAdjustmentRequest req, CorrelationId corr) {
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_ADJUST)
-                ? PermissionCode.INVENTORY_STOCK_ADJUST : PermissionCode.INVENTORY_ADJUST;
-        BranchId branchId = PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        BranchId branchId = InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_ADJUST, PermissionCode.INVENTORY_ADJUST);
 
         Optional<StockMovement> existing = inventoryRepo.findMovementByIdempotency(
                 actor.tenantId(), branchId, req.idempotencyKey().trim());
@@ -136,9 +134,8 @@ public class StockLedgerService {
     }
 
     public StockWasteRecordDto recordWaste(AccessPrincipal actor, RecordWasteRequest req, CorrelationId corr) {
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_WASTE)
-                ? PermissionCode.INVENTORY_STOCK_WASTE : PermissionCode.INVENTORY_ADJUST;
-        BranchId branchId = PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        BranchId branchId = InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_WASTE, PermissionCode.INVENTORY_ADJUST);
 
         String idempKey = req.idempotencyKey().trim();
         Optional<StockWasteRecord> existing = inventoryRepo.findWasteByIdempotency(actor.tenantId(), branchId, idempKey);
@@ -767,7 +764,7 @@ public class StockLedgerService {
         PermissionCode needed = lowStockOnly && !actor.hasPermission(PermissionCode.INVENTORY_COST_VIEW)
                 ? (actor.hasPermission(PermissionCode.INVENTORY_REPORT_VIEW) ? PermissionCode.INVENTORY_REPORT_VIEW : PermissionCode.INVENTORY_VIEW)
                 : PermissionCode.INVENTORY_COST_VIEW;
-        BranchId branchId = PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        BranchId branchId = InventoryAuthHelper.requireActiveBranchPermission(actor, needed, null);
         boolean includeCosts = actor.hasPermission(PermissionCode.INVENTORY_COST_VIEW);
 
         Map<UUID, InventoryItem> items = inventoryRepo.findItemsByTenant(actor.tenantId()).stream()
@@ -962,10 +959,7 @@ public class StockLedgerService {
     }
 
     private BranchId requireViewPermission(AccessPrincipal actor) {
-        if (actor == null || actor.activeBranchId() == null) {
-            throw new UnauthorizedOperationException(PermissionCode.INVENTORY_VIEW, "Active branch session required");
-        }
-        return PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), PermissionCode.INVENTORY_VIEW);
+        return InventoryAuthHelper.requireActiveBranchPermission(actor, PermissionCode.INVENTORY_VIEW, null);
     }
 
     private StockMovementDto toMovementDto(StockMovement m, TenantId tenantId, BranchId branchId, boolean includeCosts) {

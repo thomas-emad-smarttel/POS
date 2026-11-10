@@ -5,6 +5,37 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.restaurantpos.shared.dto.ApiResponse;
 import com.restaurantpos.shared.dto.ServerStatusDto;
+import com.restaurantpos.shared.dto.inventory.CreateStockCountRequest;
+import com.restaurantpos.shared.dto.inventory.CreateStockTransferRequest;
+import com.restaurantpos.shared.dto.inventory.InventoryAlertDto;
+import com.restaurantpos.shared.dto.inventory.InventoryBalanceDto;
+import com.restaurantpos.shared.dto.inventory.InventoryCategoryDto;
+import com.restaurantpos.shared.dto.inventory.InventoryItemDto;
+import com.restaurantpos.shared.dto.inventory.InventoryLocationDto;
+import com.restaurantpos.shared.dto.inventory.InventoryPolicyDto;
+import com.restaurantpos.shared.dto.inventory.InventoryValuationReportDto;
+import com.restaurantpos.shared.dto.inventory.ReceiveStockTransferRequest;
+import com.restaurantpos.shared.dto.inventory.RecipeCostPreviewDto;
+import com.restaurantpos.shared.dto.inventory.RecipeDto;
+import com.restaurantpos.shared.dto.inventory.RecordStockAdjustmentRequest;
+import com.restaurantpos.shared.dto.inventory.RecordWasteRequest;
+import com.restaurantpos.shared.dto.inventory.ResolveInventoryAlertRequest;
+import com.restaurantpos.shared.dto.inventory.SaveInventoryCategoryRequest;
+import com.restaurantpos.shared.dto.inventory.SaveInventoryItemRequest;
+import com.restaurantpos.shared.dto.inventory.SaveInventoryLocationRequest;
+import com.restaurantpos.shared.dto.inventory.SaveRecipeRequest;
+import com.restaurantpos.shared.dto.inventory.SaveUnitConversionRequest;
+import com.restaurantpos.shared.dto.inventory.SaveUnitRequest;
+import com.restaurantpos.shared.dto.inventory.StockCountActionRequest;
+import com.restaurantpos.shared.dto.inventory.StockCountDto;
+import com.restaurantpos.shared.dto.inventory.StockMovementDto;
+import com.restaurantpos.shared.dto.inventory.StockTransferActionRequest;
+import com.restaurantpos.shared.dto.inventory.StockTransferDto;
+import com.restaurantpos.shared.dto.inventory.StockWasteRecordDto;
+import com.restaurantpos.shared.dto.inventory.UnitConversionDto;
+import com.restaurantpos.shared.dto.inventory.UnitOfMeasureDto;
+import com.restaurantpos.shared.dto.inventory.UpdateInventoryPolicyRequest;
+import com.restaurantpos.shared.dto.inventory.UpdateStockCountItemsRequest;
 import com.restaurantpos.shared.dto.kitchen.ExpoOrderDto;
 import com.restaurantpos.shared.dto.kitchen.KitchenPrintJobDto;
 import com.restaurantpos.shared.dto.kitchen.KitchenRoutingRuleDto;
@@ -533,6 +564,183 @@ public class LocalServerClient {
     public ApiResponse<KitchenPrintJobDto> retryKitchenPrintJob(String token, UUID jobId)
             throws IOException, InterruptedException {
         return send("POST", "/api/v1/kitchen/print-jobs/" + jobId + "/retry", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<UnitOfMeasureDto>> listInventoryUnits(String token) throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/units", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<UnitOfMeasureDto> createInventoryUnit(String token, SaveUnitRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/units", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<UnitConversionDto>> listUnitConversions(String token) throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/unit-conversions", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<UnitConversionDto> saveUnitConversion(String token, SaveUnitConversionRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/unit-conversions", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<InventoryCategoryDto>> listInventoryCategories(String token)
+            throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/categories", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryCategoryDto> createInventoryCategory(String token, SaveInventoryCategoryRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/categories", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<InventoryLocationDto>> listInventoryLocations(String token)
+            throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/locations", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryLocationDto> createInventoryLocation(String token, SaveInventoryLocationRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/locations", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<InventoryItemDto>> listInventoryItems(String token) throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/items", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryItemDto> createInventoryItem(String token, SaveInventoryItemRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/items", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryPolicyDto> getInventoryPolicy(String token) throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/policy", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryPolicyDto> updateInventoryPolicy(String token, UpdateInventoryPolicyRequest req)
+            throws IOException, InterruptedException {
+        return send("PUT", "/api/v1/inventory/policy", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<InventoryBalanceDto>> listInventoryBalances(String token)
+            throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/balances", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<StockMovementDto>> listStockMovements(String token, UUID itemId)
+            throws IOException, InterruptedException {
+        String path = itemId != null ? "/api/v1/inventory/movements?itemId=" + itemId : "/api/v1/inventory/movements";
+        return send("GET", path, token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockMovementDto> recordStockAdjustment(String token, RecordStockAdjustmentRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/adjustments", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<StockWasteRecordDto>> listWasteRecords(String token) throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/waste", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockWasteRecordDto> recordWaste(String token, RecordWasteRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/waste", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<RecipeDto>> listRecipes(String token) throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/recipes", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<RecipeDto> createRecipe(String token, SaveRecipeRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/recipes", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<RecipeDto> addRecipeVersion(String token, UUID recipeId, SaveRecipeRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/recipes/" + recipeId + "/versions", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<RecipeCostPreviewDto> previewRecipeCost(String token, UUID recipeId, UUID versionId)
+            throws IOException, InterruptedException {
+        String path = versionId != null
+                ? "/api/v1/inventory/recipes/" + recipeId + "/cost?versionId=" + versionId
+                : "/api/v1/inventory/recipes/" + recipeId + "/cost";
+        return send("GET", path, token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<StockCountDto>> listStockCounts(String token) throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/counts", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockCountDto> createStockCount(String token, CreateStockCountRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/counts", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockCountDto> updateStockCountItems(String token, UUID countId, UpdateStockCountItemsRequest req)
+            throws IOException, InterruptedException {
+        return send("PUT", "/api/v1/inventory/counts/" + countId + "/items", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockCountDto> submitStockCount(String token, UUID countId, StockCountActionRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/counts/" + countId + "/submit", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockCountDto> approveStockCount(String token, UUID countId, StockCountActionRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/counts/" + countId + "/approve", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockCountDto> postStockCount(String token, UUID countId, StockCountActionRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/counts/" + countId + "/post", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<StockTransferDto>> listStockTransfers(String token)
+            throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/transfers", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockTransferDto> createStockTransfer(String token, CreateStockTransferRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/transfers", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockTransferDto> approveStockTransfer(String token, UUID id, StockTransferActionRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/transfers/" + id + "/approve", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockTransferDto> dispatchStockTransfer(String token, UUID id, StockTransferActionRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/transfers/" + id + "/dispatch", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<StockTransferDto> receiveStockTransfer(String token, UUID id, ReceiveStockTransferRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/transfers/" + id + "/receive", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<List<InventoryAlertDto>> listInventoryAlerts(String token, boolean activeOnly)
+            throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/alerts?activeOnly=" + activeOnly, token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryAlertDto> resolveInventoryAlert(String token, UUID id, ResolveInventoryAlertRequest req)
+            throws IOException, InterruptedException {
+        return send("POST", "/api/v1/inventory/alerts/" + id + "/resolve", token, req, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryValuationReportDto> getLowStockReport(String token)
+            throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/reports/low-stock", token, null, new TypeReference<>() {});
+    }
+
+    public ApiResponse<InventoryValuationReportDto> getValuationReport(String token)
+            throws IOException, InterruptedException {
+        return send("GET", "/api/v1/inventory/reports/valuation", token, null, new TypeReference<>() {});
     }
 
     private <T> ApiResponse<T> send(

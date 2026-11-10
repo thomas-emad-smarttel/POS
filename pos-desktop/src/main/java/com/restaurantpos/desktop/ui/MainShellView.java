@@ -147,6 +147,24 @@ public final class MainShellView extends BorderPane {
                     serverClient, sessionContext, ioExecutor, this::shutdownAndLogout
             ));
         }
+        if (sessionContext.hasPermission(PermissionCode.INVENTORY_VIEW)) {
+            addNavItem("inventory_dash", "Inventory & Alerts", () -> new InventoryDashboardView(
+                    serverClient, sessionContext, ioExecutor, this::shutdownAndLogout
+            ));
+            addNavItem("inventory_ops", "Stock Operations", () -> new StockOperationsView(
+                    serverClient, sessionContext, ioExecutor, this::shutdownAndLogout
+            ));
+        }
+        if (sessionContext.hasAnyPermission(PermissionCode.INVENTORY_ITEM_MANAGE, PermissionCode.INVENTORY_MANAGE)) {
+            addNavItem("inventory_cat", "Inventory Setup", () -> new InventoryCatalogView(
+                    serverClient, sessionContext, ioExecutor, this::shutdownAndLogout
+            ));
+        }
+        if (sessionContext.hasAnyPermission(PermissionCode.INVENTORY_RECIPE_VIEW, PermissionCode.INVENTORY_RECIPE_MANAGE)) {
+            addNavItem("recipes", "Recipes & Costing", () -> new RecipeEditorView(
+                    serverClient, sessionContext, ioExecutor, this::shutdownAndLogout
+            ));
+        }
         if (sessionContext.hasAnyPermission(
                 PermissionCode.CASH_SESSION_OPEN, PermissionCode.CASH_SESSION_CLOSE,
                 PermissionCode.REPORTS_CASH_VIEW, PermissionCode.CASH_MOVEMENT_CREATE)) {
@@ -228,6 +246,10 @@ public final class MainShellView extends BorderPane {
                         kdsView.handleRealtimeEvent();
                     } else if (currentView instanceof KitchenExpoView expoView) {
                         expoView.refreshExpo();
+                    } else if (currentView instanceof InventoryDashboardView invDash) {
+                        invDash.loadData();
+                    } else if (currentView instanceof StockOperationsView opsView) {
+                        opsView.loadData();
                     }
                 }),
                 () -> catchUpMissedEvents(token)

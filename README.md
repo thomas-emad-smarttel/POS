@@ -50,3 +50,4 @@ Custom Local Server URL:
 - [Core POS Workflow & Realtime Sync Guide](docs/core-pos.md)
 - [Payments, Cash Management & Receipts Guide](docs/payments-cash-and-receipts.md)
 - [Kitchen Display System & Routing Guide](docs/kitchen-display-system.md)
+- [Inventory, Recipes & Stock Control Guide](docs/inventory-and-recipes.md)

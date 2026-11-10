@@ -1,7 +1,6 @@
 package com.restaurantpos.application.inventory;
 
 import com.restaurantpos.application.audit.AuditRecordingService;
-import com.restaurantpos.application.security.PermissionPolicy;
 import com.restaurantpos.domain.exception.ConcurrentModificationDomainException;
 import com.restaurantpos.domain.exception.DomainException;
 import com.restaurantpos.domain.exception.ResourceNotFoundException;
@@ -68,8 +67,7 @@ public class StockTransferService {
     }
 
     public List<StockTransferDto> listTransfers(AccessPrincipal actor) {
-        BranchId branchId = PermissionPolicy.requireBranchPermission(
-                actor, actor.tenantId(), actor.activeBranchId(), PermissionCode.INVENTORY_VIEW);
+        BranchId branchId = InventoryAuthHelper.requireActiveBranchPermission(actor, PermissionCode.INVENTORY_VIEW, null);
         boolean includeCosts = actor.hasPermission(PermissionCode.INVENTORY_COST_VIEW);
         return inventoryRepo.findStockTransfersByTenant(actor.tenantId()).stream()
                 .filter(t -> t.sourceBranchId().equals(branchId) || t.destinationBranchId().equals(branchId))
@@ -78,9 +76,8 @@ public class StockTransferService {
     }
 
     public StockTransferDto createTransfer(AccessPrincipal actor, CreateStockTransferRequest req, CorrelationId corr) {
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_TRANSFER)
-                ? PermissionCode.INVENTORY_STOCK_TRANSFER : PermissionCode.INVENTORY_TRANSFER;
-        BranchId sourceBranch = PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        BranchId sourceBranch = InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_TRANSFER, PermissionCode.INVENTORY_TRANSFER);
 
         InventoryLocation srcLoc = inventoryRepo.findLocationScoped(req.sourceLocationId(), actor.tenantId(), sourceBranch)
                 .orElseThrow(() -> new ResourceNotFoundException("Source location not found in active branch"));
@@ -129,9 +126,8 @@ public class StockTransferService {
     }
 
     public StockTransferDto approveTransfer(AccessPrincipal actor, UUID transferId, StockTransferActionRequest req, CorrelationId corr) {
-        PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_TRANSFER_APPROVE)
-                ? PermissionCode.INVENTORY_STOCK_TRANSFER_APPROVE : PermissionCode.INVENTORY_TRANSFER;
-        BranchId branchId = PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        BranchId branchId = InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_TRANSFER_APPROVE, PermissionCode.INVENTORY_TRANSFER);
 
         StockTransfer existing = loadLocked(transferId, actor, req.expectedVersion());
         if (!existing.sourceBranchId().equals(branchId) && !existing.destinationBranchId().equals(branchId)) {
@@ -159,7 +155,8 @@ public class StockTransferService {
     public StockTransferDto dispatchTransfer(AccessPrincipal actor, UUID transferId, StockTransferActionRequest req, CorrelationId corr) {
         PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_TRANSFER)
                 ? PermissionCode.INVENTORY_STOCK_TRANSFER : PermissionCode.INVENTORY_TRANSFER;
-        BranchId sourceBranch = PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        BranchId sourceBranch = InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_TRANSFER, PermissionCode.INVENTORY_TRANSFER);
 
         StockTransfer existing = loadLocked(transferId, actor, req.expectedVersion());
         if (!existing.sourceBranchId().equals(sourceBranch)) {
@@ -217,7 +214,8 @@ public class StockTransferService {
     public StockTransferDto receiveTransfer(AccessPrincipal actor, UUID transferId, ReceiveStockTransferRequest req, CorrelationId corr) {
         PermissionCode needed = actor.hasPermission(PermissionCode.INVENTORY_STOCK_RECEIVE)
                 ? PermissionCode.INVENTORY_STOCK_RECEIVE : PermissionCode.INVENTORY_TRANSFER;
-        BranchId destBranch = PermissionPolicy.requireBranchPermission(actor, actor.tenantId(), actor.activeBranchId(), needed);
+        BranchId destBranch = InventoryAuthHelper.requireActiveBranchPermission(
+                actor, PermissionCode.INVENTORY_STOCK_RECEIVE, PermissionCode.INVENTORY_TRANSFER);
 
         StockTransfer existing = loadLocked(transferId, actor, req.expectedVersion());
         if (!existing.destinationBranchId().equals(destBranch)) {

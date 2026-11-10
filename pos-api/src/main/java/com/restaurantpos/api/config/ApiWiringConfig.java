@@ -1,6 +1,12 @@
 package com.restaurantpos.api.config;
 
 import com.restaurantpos.application.audit.AuditRecordingService;
+import com.restaurantpos.application.inventory.InventoryCatalogService;
+import com.restaurantpos.application.inventory.InventoryOutboxConsumerService;
+import com.restaurantpos.application.inventory.RecipeManagementService;
+import com.restaurantpos.application.inventory.StockCountService;
+import com.restaurantpos.application.inventory.StockLedgerService;
+import com.restaurantpos.application.inventory.StockTransferService;
 import com.restaurantpos.application.kitchen.KitchenConfigService;
 import com.restaurantpos.application.kitchen.KitchenOutboxConsumerService;
 import com.restaurantpos.application.kitchen.KitchenPrintDispatcher;
@@ -28,6 +34,9 @@ import com.restaurantpos.domain.port.BranchQueryPort;
 import com.restaurantpos.domain.port.BranchRepositoryPort;
 import com.restaurantpos.domain.port.CashDrawerPort;
 import com.restaurantpos.domain.port.CashSessionRepositoryPort;
+import com.restaurantpos.domain.port.InventoryDispatchPort;
+import com.restaurantpos.domain.port.InventoryPayloadCodecPort;
+import com.restaurantpos.domain.port.InventoryRepositoryPort;
 import com.restaurantpos.domain.port.KitchenDispatchPort;
 import com.restaurantpos.domain.port.KitchenPayloadCodecPort;
 import com.restaurantpos.domain.port.KitchenPrinterPort;
@@ -391,11 +400,89 @@ public class ApiWiringConfig {
             KitchenPrintDispatcher kitchenPrintDispatcher,
             BranchEventPublishPort eventPublishPort,
             AuditRecordingService auditRecordingService,
-            SystemClockPort systemClockPort
+            SystemClockPort systemClockPort,
+            InventoryDispatchPort inventoryDispatchPort
     ) {
         return new KitchenWorkflowService(
                 kitchenRepositoryPort, kitchenPrintDispatcher, eventPublishPort,
-                auditRecordingService, systemClockPort
+                auditRecordingService, systemClockPort, inventoryDispatchPort
         );
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "pos.persistence.enabled", havingValue = "true", matchIfMissing = true)
+    public InventoryCatalogService inventoryCatalogService(
+            InventoryRepositoryPort inventoryRepositoryPort,
+            BranchEventPublishPort eventPublishPort,
+            AuditRecordingService auditRecordingService,
+            SystemClockPort systemClockPort
+    ) {
+        return new InventoryCatalogService(inventoryRepositoryPort, eventPublishPort, auditRecordingService, systemClockPort);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "pos.persistence.enabled", havingValue = "true", matchIfMissing = true)
+    public RecipeManagementService recipeManagementService(
+            InventoryRepositoryPort inventoryRepositoryPort,
+            MenuRepositoryPort menuRepositoryPort,
+            AuditRecordingService auditRecordingService,
+            SystemClockPort systemClockPort
+    ) {
+        return new RecipeManagementService(inventoryRepositoryPort, menuRepositoryPort, auditRecordingService, systemClockPort);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "pos.persistence.enabled", havingValue = "true", matchIfMissing = true)
+    public StockLedgerService stockLedgerService(
+            InventoryRepositoryPort inventoryRepositoryPort,
+            SupervisorApprovalRepositoryPort approvalRepositoryPort,
+            BranchEventPublishPort eventPublishPort,
+            AuditRecordingService auditRecordingService,
+            SystemClockPort systemClockPort
+    ) {
+        return new StockLedgerService(
+                inventoryRepositoryPort, approvalRepositoryPort, eventPublishPort, auditRecordingService, systemClockPort);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "pos.persistence.enabled", havingValue = "true", matchIfMissing = true)
+    public StockCountService stockCountService(
+            InventoryRepositoryPort inventoryRepositoryPort,
+            StockLedgerService stockLedgerService,
+            SupervisorApprovalRepositoryPort approvalRepositoryPort,
+            BranchEventPublishPort eventPublishPort,
+            AuditRecordingService auditRecordingService,
+            SystemClockPort systemClockPort
+    ) {
+        return new StockCountService(
+                inventoryRepositoryPort, stockLedgerService, approvalRepositoryPort,
+                eventPublishPort, auditRecordingService, systemClockPort);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "pos.persistence.enabled", havingValue = "true", matchIfMissing = true)
+    public StockTransferService stockTransferService(
+            InventoryRepositoryPort inventoryRepositoryPort,
+            StockLedgerService stockLedgerService,
+            BranchEventPublishPort eventPublishPort,
+            AuditRecordingService auditRecordingService,
+            SystemClockPort systemClockPort
+    ) {
+        return new StockTransferService(
+                inventoryRepositoryPort, stockLedgerService, eventPublishPort, auditRecordingService, systemClockPort);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "pos.persistence.enabled", havingValue = "true", matchIfMissing = true)
+    public InventoryOutboxConsumerService inventoryOutboxConsumerService(
+            InventoryRepositoryPort inventoryRepositoryPort,
+            KitchenPayloadCodecPort kitchenPayloadCodecPort,
+            InventoryPayloadCodecPort inventoryPayloadCodecPort,
+            StockLedgerService stockLedgerService,
+            SystemClockPort systemClockPort
+    ) {
+        return new InventoryOutboxConsumerService(
+                inventoryRepositoryPort, kitchenPayloadCodecPort, inventoryPayloadCodecPort,
+                stockLedgerService, systemClockPort);
     }
 }

@@ -50,4 +50,11 @@ All boundaries above are verified automatically by `ArchitectureBoundaryTest` in
 - **Idempotent Outbox Pipeline**: `OutboxKitchenDispatchAdapter` serializes immutable order/modifier snapshots via `KitchenPayloadCodecPort`, and `KitchenOutboxScheduler` / `KitchenOutboxConsumerService` consume `ORDER_SENT_TO_KITCHEN` & `ORDER_CANCELLED_IN_KITCHEN` events with PostgreSQL `SKIP LOCKED` claiming, retry backoff, and `DEAD_LETTER` handling.
 - **Pure Domain Policies**: `KitchenRoutingEngine` (PRODUCT -> CATEGORY -> BRANCH_DEFAULT + multi-station fan-out) and `KitchenTicketStatePolicy` (state transitions, partial readiness, overdue detection, Expo gating) stay free of framework dependencies in `pos-domain`.
 
+## Inventory, Versioned Recipes & Consumption Ledger (Phase 7)
+
+- **Flyway `V013__inventory_recipes_consumption_counts_transfers.sql`** extends `V007` (`units`, `ingredients`, `stock_locations`, `recipes`, `stock_movements`, `stock_balances`) with `inventory_categories`, `unit_conversions`, `inventory_policies`, `recipe_versions`, `recipe_version_ingredients`, `recipe_modifier_mappings`, `inventory_processed_events`, `stock_reservations`, `stock_reservation_items`, `stock_waste_records`, `stock_counts`, `stock_count_items`, `stock_transfers`, `stock_transfer_items`, and deduplicated `inventory_alerts`.
+- **Immutable Ledger & Concurrency**: Every balance change posts an append-only `StockMovement` preserving before/after `onHand` and `reserved` snapshots, Weighted Average Cost snapshots, and optimistic locking (`version`) on `stock_balances`, `stock_counts`, and `stock_transfers`.
+- **Outbox Consumption Pipeline**: `OutboxKitchenDispatchAdapter` and `OutboxInventoryDispatchAdapter` emit `INVENTORY_RESERVE_ORDER`, `INVENTORY_CONSUME_PREP`, `INVENTORY_RELEASE_ORDER`, and `INVENTORY_REFIRE_TICKET` processed idempotently by `InventoryOutboxScheduler` / `InventoryOutboxConsumerService`.
+
+
 
