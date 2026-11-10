@@ -1,0 +1,14 @@
+# Phase 1 foundation development profile (allows startup without a live PostgreSQL instance).
+# Activate 'prod' or omit 'dev' once PostgreSQL is running in Phase 2+.
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  flyway:
+    enabled: false
+
+pos:
+  persistence:
+    enabled: false

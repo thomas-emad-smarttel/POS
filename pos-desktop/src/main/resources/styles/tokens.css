@@ -1,0 +1,41 @@
+/* Centralized Design Tokens for Restaurant POS Desktop UI */
+.root {
+    /* Surfaces */
+    -pos-bg-app: #F4F6F9;
+    -pos-bg-surface: #FFFFFF;
+    -pos-bg-subtle: #EEF2F6;
+    -pos-bg-sidebar: #131B2E;
+
+    /* Text */
+    -pos-text-primary: #111827;
+    -pos-text-secondary: #4B5563;
+    -pos-text-muted: #6B7280;
+    -pos-text-on-dark: #F9FAFB;
+
+    /* Brand & Semantic Accents */
+    -pos-accent-primary: #1D4ED8;
+    -pos-accent-primary-hover: #1E40AF;
+    -pos-accent-primary-text: #FFFFFF;
+
+    -pos-success-bg: #DCFCE7;
+    -pos-success-text: #166534;
+    -pos-warning-bg: #FEF3C7;
+    -pos-warning-text: #92400E;
+    -pos-danger-bg: #FEE2E2;
+    -pos-danger-text: #991B1B;
+    -pos-neutral-bg: #E5E7EB;
+    -pos-neutral-text: #374151;
+
+    /* Borders & Radii */
+    -pos-border-subtle: #E2E8F0;
+    -pos-border-strong: #CBD5E1;
+    -pos-radius-sm: 6px;
+    -pos-radius-md: 10px;
+    -pos-radius-lg: 14px;
+
+    /* Typography */
+    -fx-font-family: "Segoe UI", "Inter", "SF Pro Text", "Ubuntu", sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: -pos-bg-app;
+    -fx-text-fill: -pos-text-primary;
+}

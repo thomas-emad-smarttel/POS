@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: pos-cloud
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+  datasource:
+    url: ${POS_CLOUD_DB_URL:jdbc:postgresql://localhost:5433/restaurant_pos_cloud}
+    username: ${POS_CLOUD_DB_USERNAME:}
+    password: ${POS_CLOUD_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${POS_CLOUD_PORT:8090}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+pos:
+  cloud:
+    version: 0.1.0-SNAPSHOT

@@ -1,0 +1,254 @@
+/* Component & Layout Theme Stylesheet (references tokens.css exclusively) */
+.pos-topbar {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: transparent transparent -pos-border-subtle transparent;
+    -fx-border-width: 1px;
+    -fx-padding: 10px 18px;
+}
+
+.pos-sidebar {
+    -fx-background-color: -pos-bg-sidebar;
+    -fx-padding: 16px 12px;
+    -fx-pref-width: 220px;
+}
+
+.pos-sidebar-title {
+    -fx-text-fill: -pos-text-on-dark;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 4px 10px 14px 10px;
+}
+
+.pos-nav-item {
+    -fx-background-color: transparent;
+    -fx-text-fill: #CBD5E1;
+    -fx-alignment: CENTER_LEFT;
+    -fx-min-height: 44px;
+    -fx-padding: 10px 14px;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.pos-nav-item:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-text-fill: -pos-text-on-dark;
+}
+
+.pos-nav-item-active {
+    -fx-background-color: -pos-accent-primary;
+    -fx-text-fill: -pos-accent-primary-text;
+}
+
+.pos-card {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-subtle;
+    -fx-border-width: 1px;
+    -fx-border-radius: -pos-radius-md;
+    -fx-background-radius: -pos-radius-md;
+    -fx-padding: 20px;
+}
+
+.pos-heading-lg {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -pos-text-primary;
+}
+
+.pos-heading-md {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -pos-text-primary;
+}
+
+.pos-text-muted {
+    -fx-text-fill: -pos-text-muted;
+    -fx-font-size: 13px;
+}
+
+.pos-btn-primary {
+    -fx-background-color: -pos-accent-primary;
+    -fx-text-fill: -pos-accent-primary-text;
+    -fx-font-weight: bold;
+    -fx-min-height: 44px;
+    -fx-padding: 10px 18px;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-cursor: hand;
+}
+
+.pos-btn-primary:hover {
+    -fx-background-color: -pos-accent-primary-hover;
+}
+
+.pos-btn-secondary {
+    -fx-background-color: -pos-bg-subtle;
+    -fx-text-fill: -pos-text-primary;
+    -fx-border-color: -pos-border-strong;
+    -fx-border-width: 1px;
+    -fx-border-radius: -pos-radius-sm;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-font-weight: 600;
+    -fx-min-height: 44px;
+    -fx-padding: 10px 16px;
+    -fx-cursor: hand;
+}
+
+.pos-btn-secondary:hover {
+    -fx-background-color: #E2E8F0;
+}
+
+.pos-badge {
+    -fx-padding: 4px 10px;
+    -fx-background-radius: 999px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.pos-badge-success {
+    -fx-background-color: -pos-success-bg;
+    -fx-text-fill: -pos-success-text;
+}
+
+.pos-badge-warning {
+    -fx-background-color: -pos-warning-bg;
+    -fx-text-fill: -pos-warning-text;
+}
+
+.pos-badge-danger {
+    -fx-background-color: -pos-danger-bg;
+    -fx-text-fill: -pos-danger-text;
+}
+
+.pos-badge-neutral {
+    -fx-background-color: -pos-neutral-bg;
+    -fx-text-fill: -pos-neutral-text;
+}
+
+.pos-state-box {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-subtle;
+    -fx-border-radius: -pos-radius-md;
+    -fx-background-radius: -pos-radius-md;
+    -fx-padding: 32px;
+    -fx-alignment: CENTER;
+    -fx-spacing: 12px;
+}
+
+.pos-input {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-strong;
+    -fx-border-radius: -pos-radius-sm;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-min-height: 42px;
+    -fx-padding: 8px 12px;
+    -fx-text-fill: -pos-text-primary;
+}
+
+.pos-input:focused {
+    -fx-border-color: -pos-accent-primary;
+    -fx-border-width: 1.5px;
+}
+
+.pos-banner-success {
+    -fx-background-color: -pos-success-bg;
+    -fx-text-fill: -pos-success-text;
+    -fx-padding: 10px 14px;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-font-weight: 600;
+}
+
+.pos-banner-error {
+    -fx-background-color: -pos-danger-bg;
+    -fx-text-fill: -pos-danger-text;
+    -fx-padding: 10px 14px;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-font-weight: 600;
+}
+
+.pos-module-card {
+    -fx-background-color: -pos-bg-subtle;
+    -fx-border-color: -pos-border-subtle;
+    -fx-border-radius: -pos-radius-sm;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-padding: 14px;
+}
+
+.pos-table {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-subtle;
+    -fx-border-radius: -pos-radius-sm;
+}
+
+.pos-category-btn {
+    -fx-background-color: -pos-bg-surface;
+    -fx-text-fill: -pos-text-primary;
+    -fx-border-color: -pos-border-subtle;
+    -fx-border-radius: -pos-radius-sm;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-min-height: 46px;
+    -fx-padding: 10px 14px;
+    -fx-font-weight: 600;
+    -fx-alignment: CENTER_LEFT;
+    -fx-cursor: hand;
+}
+
+.pos-category-btn:hover {
+    -fx-background-color: -pos-bg-subtle;
+}
+
+.pos-category-btn-active {
+    -fx-background-color: -pos-accent-primary;
+    -fx-text-fill: -pos-accent-primary-text;
+    -fx-border-color: -pos-accent-primary;
+}
+
+.pos-product-card {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-subtle;
+    -fx-border-radius: -pos-radius-md;
+    -fx-background-radius: -pos-radius-md;
+    -fx-padding: 12px;
+    -fx-cursor: hand;
+    -fx-min-width: 155px;
+    -fx-pref-width: 170px;
+    -fx-min-height: 118px;
+}
+
+.pos-product-card:hover {
+    -fx-border-color: -pos-accent-primary;
+    -fx-background-color: #F8FAFC;
+}
+
+.pos-product-card-disabled {
+    -fx-opacity: 0.55;
+    -fx-cursor: default;
+}
+
+.pos-price-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: -pos-accent-primary;
+    -fx-font-size: 15px;
+}
+
+.pos-total-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: -pos-text-primary;
+    -fx-font-size: 20px;
+}
+
+.pos-cart-item {
+    -fx-background-color: -pos-bg-subtle;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-padding: 10px;
+}
+
+.pos-qty-btn {
+    -fx-min-width: 34px;
+    -fx-min-height: 34px;
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-strong;
+    -fx-border-radius: -pos-radius-sm;
+    -fx-background-radius: -pos-radius-sm;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
