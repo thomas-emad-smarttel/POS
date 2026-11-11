@@ -2,7 +2,7 @@ spring:
   application:
     name: pos-local-server
   profiles:
-    default: dev
+    default: demo
   jpa:
     open-in-view: false
     hibernate:

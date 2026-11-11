@@ -6,6 +6,7 @@ import com.restaurantpos.desktop.infra.SessionContext;
 import com.restaurantpos.desktop.ui.component.NotificationBanner;
 import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.shared.dto.inventory.CreateStockCountRequest;
 import com.restaurantpos.shared.dto.inventory.CreateStockTransferRequest;
 import com.restaurantpos.shared.dto.inventory.InventoryItemDto;
@@ -78,6 +79,12 @@ public final class StockOperationsView extends VBox {
         refreshBtn.setOnAction(e -> loadData());
         HBox header = new HBox(12, title, refreshBtn);
         header.setAlignment(Pos.CENTER_LEFT);
+
+        SelectBoxes.configure(locCombo, "Select Location...", l -> l.name() + " (" + l.code() + ")");
+        SelectBoxes.configure(itemCombo, "Select Item...", i -> i.name() + " [" + i.sku() + "]");
+        SelectBoxes.configure(unitCombo, "Select Unit...", u -> u.code() + " — " + u.name());
+        SelectBoxes.configureList(countList, c -> c.countNumber() + " • " + c.locationName() + " [" + c.status() + "]");
+        SelectBoxes.configureList(transferList, t -> t.transferNumber() + " • " + t.sourceLocationName() + " -> " + t.destinationLocationName() + " [" + t.status() + "]");
 
         HBox sharedPickers = new HBox(8, locCombo, itemCombo, unitCombo);
         TabPane tabs = new TabPane(buildWasteAndAdjustmentTab(), buildCountsTab(), buildTransfersTab());
@@ -208,7 +215,7 @@ public final class StockOperationsView extends VBox {
         box.setPadding(new Insets(8));
 
         ComboBox<InventoryLocationDto> destLocCombo = new ComboBox<>();
-        destLocCombo.setPromptText("Destination Location");
+        SelectBoxes.configure(destLocCombo, "Destination Location...", l -> l.name() + " (" + l.code() + ")");
         destLocCombo.itemsProperty().bind(locCombo.itemsProperty());
         TextField trfQtyField = new TextField("5.00");
         trfQtyField.setPromptText("Qty");

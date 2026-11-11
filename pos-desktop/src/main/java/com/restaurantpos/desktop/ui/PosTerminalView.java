@@ -12,6 +12,7 @@ import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.ProductCard;
 import com.restaurantpos.desktop.ui.component.SearchField;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.desktop.ui.component.StatusBadge;
 import com.restaurantpos.desktop.ui.component.ViewState;
 import com.restaurantpos.desktop.ui.component.ViewStateContainer;
@@ -426,10 +427,15 @@ public final class PosTerminalView extends BorderPane {
                 banner.showError("No dining tables configured in this branch.");
                 return;
             }
-            ChoiceDialog<DiningTableDto> dialog = new ChoiceDialog<>(tables.get(0), tables);
+            ChoiceDialog<SelectBoxes.Option<DiningTableDto>> dialog = SelectBoxes.choiceDialog(
+                    tables,
+                    tables.get(0),
+                    t -> t.displayName() + " (" + t.tableCode() + ") • " + t.capacity() + " seats — " + t.status()
+            );
             dialog.setTitle("Select Dining Table");
             dialog.setHeaderText("Choose an available table (or an occupied table to open its order)");
-            dialog.showAndWait().ifPresent(table -> {
+            dialog.showAndWait().ifPresent(opt -> {
+                DiningTableDto table = opt.value();
                 if (table.activeOrderId() != null) {
                     reloadActiveOrder(table.activeOrderId(), pendingProduct);
                 } else {
@@ -593,10 +599,15 @@ public final class PosTerminalView extends BorderPane {
                 banner.showSuccess("No orders currently on hold.");
                 return;
             }
-            ChoiceDialog<OrderSummaryDto> dialog = new ChoiceDialog<>(held.get(0), held);
+            ChoiceDialog<SelectBoxes.Option<OrderSummaryDto>> dialog = SelectBoxes.choiceDialog(
+                    held,
+                    held.get(0),
+                    o -> o.orderNumber() + " • " + o.orderType() + " • Total " + fmt(o.totalAmount())
+            );
             dialog.setTitle("Retrieve Held Order");
             dialog.setHeaderText("Select an order to resume");
-            dialog.showAndWait().ifPresent(chosen -> {
+            dialog.showAndWait().ifPresent(opt -> {
+                OrderSummaryDto chosen = opt.value();
                 Task<OrderDto> resumeTask = new Task<>() {
                     @Override
                     protected OrderDto call() throws Exception {
@@ -632,10 +643,15 @@ public final class PosTerminalView extends BorderPane {
                 banner.showError("No available tables to transfer to.");
                 return;
             }
-            ChoiceDialog<DiningTableDto> dialog = new ChoiceDialog<>(avail.get(0), avail);
+            ChoiceDialog<SelectBoxes.Option<DiningTableDto>> dialog = SelectBoxes.choiceDialog(
+                    avail,
+                    avail.get(0),
+                    t -> t.displayName() + " (" + t.tableCode() + ") • " + t.capacity() + " seats"
+            );
             dialog.setTitle("Transfer Order");
             dialog.setHeaderText("Select target table for " + activeOrder.orderNumber());
-            dialog.showAndWait().ifPresent(target -> {
+            dialog.showAndWait().ifPresent(opt -> {
+                DiningTableDto target = opt.value();
                 Task<OrderDto> trTask = new Task<>() {
                     @Override
                     protected OrderDto call() throws Exception {

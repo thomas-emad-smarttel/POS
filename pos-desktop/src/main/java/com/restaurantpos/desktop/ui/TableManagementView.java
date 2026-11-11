@@ -6,6 +6,7 @@ import com.restaurantpos.desktop.infra.SessionContext;
 import com.restaurantpos.desktop.ui.component.NotificationBanner;
 import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.desktop.ui.component.StatusBadge;
 import com.restaurantpos.desktop.ui.component.ViewState;
 import com.restaurantpos.desktop.ui.component.ViewStateContainer;
@@ -109,6 +110,7 @@ public final class TableManagementView extends VBox {
         addTableBtn.setOnAction(e -> createTable());
 
         HBox areaRow = new HBox(8, areaCodeField, areaNameField, addAreaBtn);
+        SelectBoxes.configure(areaCombo, "Select Dining Area...", a -> a.name() + " (" + a.code() + ")");
         HBox tableRow = new HBox(8, areaCombo, tableCodeField, tableNameField, capacityField, addTableBtn);
         VBox box = new VBox(8, areaRow, tableRow);
         box.getStyleClass().add("pos-card");

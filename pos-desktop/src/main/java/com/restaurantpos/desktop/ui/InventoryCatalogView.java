@@ -6,6 +6,7 @@ import com.restaurantpos.desktop.infra.SessionContext;
 import com.restaurantpos.desktop.ui.component.NotificationBanner;
 import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.shared.dto.inventory.InventoryCategoryDto;
 import com.restaurantpos.shared.dto.inventory.InventoryItemDto;
 import com.restaurantpos.shared.dto.inventory.InventoryLocationDto;
@@ -75,6 +76,12 @@ public final class InventoryCatalogView extends VBox {
         refreshBtn.setOnAction(e -> loadData());
         HBox header = new HBox(12, title, refreshBtn);
         header.setAlignment(Pos.CENTER_LEFT);
+
+        SelectBoxes.configure(itemUnitCombo, "Base Unit...", u -> u.code() + " — " + u.name());
+        SelectBoxes.configure(convFromUnitCombo, "From Unit...", u -> u.code() + " — " + u.name());
+        SelectBoxes.configure(convToUnitCombo, "To Unit...", u -> u.code() + " — " + u.name());
+        SelectBoxes.configure(itemCategoryCombo, "Category (Optional)", c -> c.name() + " (" + c.code() + ")");
+        SelectBoxes.configure(itemLocCombo, "Default Location...", l -> l.name() + " (" + l.code() + ")");
 
         TabPane tabs = new TabPane(buildItemsTab(), buildCategoriesLocationsTab(), buildUnitsTab());
         VBox.setVgrow(tabs, Priority.ALWAYS);

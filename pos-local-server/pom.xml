@@ -58,6 +58,9 @@
     <profiles>
         <profile>
             <id>demo</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <dependencies>
                 <dependency>
                     <groupId>io.zonky.test</groupId>

@@ -209,6 +209,40 @@
     -fx-border-width: 1.5px;
 }
 
+.combo-box.pos-select,
+.combo-box-base {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-strong;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-min-height: 40px;
+    -fx-padding: 2px 6px;
+    -fx-cursor: hand;
+}
+
+.combo-box.pos-select:focused,
+.combo-box-base:focused {
+    -fx-border-color: -pos-accent-primary;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: -pos-bg-surface;
+    -fx-border-color: -pos-border-strong;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.combo-box-popup .list-cell {
+    -fx-padding: 8px 12px;
+    -fx-text-fill: -pos-text-primary;
+}
+
+.combo-box-popup .list-cell:hover,
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: #EFF6FF;
+    -fx-text-fill: -pos-accent-primary;
+}
+
 .pos-banner-success {
     -fx-background-color: -pos-success-bg;
     -fx-text-fill: -pos-success-text;

@@ -6,6 +6,7 @@ import com.restaurantpos.desktop.infra.SessionContext;
 import com.restaurantpos.desktop.ui.component.NotificationBanner;
 import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.desktop.ui.component.ViewState;
 import com.restaurantpos.desktop.ui.component.ViewStateContainer;
 import com.restaurantpos.shared.dto.pos.BranchProductOverrideRequest;
@@ -154,6 +155,7 @@ public final class MenuManagementView extends VBox {
         PrimaryButton addProdBtn = new PrimaryButton("Add Product");
         addProdBtn.setOnAction(e -> createProduct());
 
+        SelectBoxes.configure(categoryCombo, "Select Category...", c -> c.name() + " (" + c.code() + ")");
         HBox catRow = new HBox(8, catCodeField, catNameField, addCatBtn);
         HBox prodRow = new HBox(8, categoryCombo, skuField, prodNameField, priceField, imageRefField, browseImageBtn, addProdBtn);
         HBox.setHgrow(imageRefField, Priority.ALWAYS);

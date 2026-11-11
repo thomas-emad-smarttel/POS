@@ -7,6 +7,7 @@ import com.restaurantpos.desktop.ui.component.ConfirmDialog;
 import com.restaurantpos.desktop.ui.component.NotificationBanner;
 import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.desktop.ui.component.StatusBadge;
 import com.restaurantpos.desktop.ui.component.ViewState;
 import com.restaurantpos.desktop.ui.component.ViewStateContainer;
@@ -212,10 +213,13 @@ public final class UserManagementView extends VBox {
     }
 
     private void rebuildBranchAndRoleControls() {
+        Map<UUID, String> branchLabels = new HashMap<>();
         branchCheckboxes.clear();
         branchCheckboxesBox.getChildren().clear();
         for (BranchSummaryDto branch : branches) {
-            CheckBox cb = new CheckBox(branch.name() + " (" + branch.code() + ")");
+            String label = branch.name() + " (" + branch.code() + ")";
+            branchLabels.put(branch.id(), label);
+            CheckBox cb = new CheckBox(label);
             branchCheckboxes.put(branch.id(), cb);
             branchCheckboxesBox.getChildren().add(cb);
         }
@@ -230,10 +234,11 @@ public final class UserManagementView extends VBox {
             for (BranchSummaryDto b : branches) {
                 branchCombo.getItems().add(b.id());
             }
-            branchCombo.setPromptText("Tenant-Wide (All Allowed)");
+            SelectBoxes.configure(branchCombo, "Tenant-Wide (All Allowed)",
+                    id -> branchLabels.getOrDefault(id, id.toString()));
             roleCheckboxes.put(role.id(), cb);
             roleBranchSelectors.put(role.id(), branchCombo);
-            HBox row = new HBox(10, cb, new Label("Scope Branch ID:"), branchCombo);
+            HBox row = new HBox(10, cb, new Label("Scope Branch:"), branchCombo);
             roleAssignmentsBox.getChildren().add(row);
         }
     }

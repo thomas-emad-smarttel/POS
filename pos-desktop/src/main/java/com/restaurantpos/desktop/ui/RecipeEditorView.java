@@ -6,6 +6,7 @@ import com.restaurantpos.desktop.infra.SessionContext;
 import com.restaurantpos.desktop.ui.component.NotificationBanner;
 import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.shared.dto.inventory.InventoryItemDto;
 import com.restaurantpos.shared.dto.inventory.RecipeCostPreviewDto;
 import com.restaurantpos.shared.dto.inventory.RecipeDto;
@@ -75,6 +76,11 @@ public final class RecipeEditorView extends VBox {
         refreshBtn.setOnAction(e -> loadData());
         HBox header = new HBox(12, title, refreshBtn);
         header.setAlignment(Pos.CENTER_LEFT);
+
+        SelectBoxes.configure(productCombo, "Link Menu Product...", p -> p.name() + " (" + p.sku() + ")");
+        SelectBoxes.configure(ingredientCombo, "Select Ingredient...", i -> i.name() + " [" + i.sku() + "]");
+        SelectBoxes.configure(subRecipeCombo, "Or Sub-Recipe...", r -> r.recipeName() + " (v" + r.activeVersionNumber() + ")");
+        SelectBoxes.configure(unitCombo, "Unit...", u -> u.code() + " — " + u.name());
 
         recipesList.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
             @Override

@@ -18,6 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -88,6 +89,15 @@ public class GlobalExceptionHandler {
                 .toList();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail(ApiError.of("VALIDATION_ERROR", "Request validation failed", correlationId, details)));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingResource(NoResourceFoundException ex) {
+        String correlationId = currentCorrelationId();
+        LOG.warn("Missing endpoint correlationId={} path={}", correlationId, ex.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail(ApiError.of("ENDPOINT_NOT_FOUND",
+                        "Endpoint '/" + ex.getResourcePath() + "' is not available on this server profile", correlationId)));
     }
 
     @ExceptionHandler(Exception.class)

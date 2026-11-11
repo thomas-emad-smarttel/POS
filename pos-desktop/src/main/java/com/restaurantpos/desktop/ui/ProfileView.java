@@ -5,8 +5,10 @@ import com.restaurantpos.desktop.infra.SessionContext;
 import com.restaurantpos.desktop.ui.component.NotificationBanner;
 import com.restaurantpos.desktop.ui.component.PrimaryButton;
 import com.restaurantpos.desktop.ui.component.SecondaryButton;
+import com.restaurantpos.desktop.ui.component.SelectBoxes;
 import com.restaurantpos.desktop.ui.component.StatusBadge;
 import com.restaurantpos.shared.dto.ApiResponse;
+import com.restaurantpos.shared.dto.security.BranchSummaryDto;
 import com.restaurantpos.shared.dto.security.ChangePasswordRequest;
 import com.restaurantpos.shared.dto.security.UserProfileDto;
 import javafx.concurrent.Task;
@@ -19,6 +21,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -37,6 +41,7 @@ public final class ProfileView extends VBox {
     private final NotificationBanner banner = new NotificationBanner();
     private final Label userSummaryLabel = new Label();
     private final ComboBox<UUID> branchSelector = new ComboBox<>();
+    private final Map<UUID, String> branchLabels = new HashMap<>();
     private final ListView<String> rolesList = new ListView<>();
     private final ListView<String> permissionsList = new ListView<>();
     private final PasswordField currentPasswordField = new PasswordField();
@@ -70,6 +75,8 @@ public final class ProfileView extends VBox {
         PrimaryButton switchBranchBtn = new PrimaryButton("Switch Active Branch");
         switchBranchBtn.setOnAction(e -> switchBranch());
 
+        SelectBoxes.configure(branchSelector, "Select Branch...",
+                id -> branchLabels.getOrDefault(id, id.toString()));
         HBox branchBar = new HBox(10, new Label("Active Branch:"), branchSelector, switchBranchBtn, refreshBtn);
 
         VBox profileCard = new VBox(12, title, banner, userSummaryLabel, branchBar);
@@ -97,6 +104,26 @@ public final class ProfileView extends VBox {
 
         getChildren().addAll(profileCard, listsRow, passwordCard);
         renderProfile();
+        loadBranchNames();
+    }
+
+    private void loadBranchNames() {
+        String token = sessionContext.accessToken();
+        if (token == null) return;
+        Task<java.util.List<BranchSummaryDto>> task = new Task<>() {
+            @Override
+            protected java.util.List<BranchSummaryDto> call() throws Exception {
+                return serverClient.listBranches(token).data();
+            }
+        };
+        task.setOnSucceeded(e -> {
+            branchLabels.clear();
+            for (BranchSummaryDto b : task.getValue()) {
+                branchLabels.put(b.id(), b.name() + " (" + b.code() + ")");
+            }
+            renderProfile();
+        });
+        ioExecutor.submit(task);
     }
 
     public void renderProfile() {
